@@ -1,0 +1,45 @@
+{
+  "appName": "AGRI ONE",
+  "nav": {
+    "dashboard": "Home",
+    "plan": "Plan",
+    "grow": "Grow",
+    "protect": "Protect",
+    "sell": "Sell",
+    "more": "More",
+    "farms": "My Farms",
+    "scanCrop": "Scan Crop",
+    "weather": "Weather & Advisory",
+    "soilWater": "Soil & Water",
+    "pestAlerts": "Pest Alerts",
+    "market": "Market Analysis",
+    "marketplace": "Marketplace",
+    "schemes": "Govt. Schemes",
+    "reports": "Reports",
+    "scanHistory": "Scan History",
+    "voiceAi": "Voice AI"
+  },
+  "stages": {
+    "plan": {
+      "title": "Plan",
+      "description": "Your farms and soil information."
+    },
+    "protect": {
+      "title": "Protect",
+      "description": "Crop scanning and pest alerts."
+    },
+    "sell": {
+      "title": "Sell",
+      "description": "Current market information and buyers."
+    },
+    "more": {
+      "title": "More",
+      "description": "Schemes, reports and scan history."
+    }
+  },
+  "common": {
+    "comingSoon": "This module is coming soon.",
+    "dataUnavailable": "Live data is currently unavailable.",
+    "selectLanguage": "Select your language"
+  }
+}

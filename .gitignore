@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.log
+npm-debug.log*
+
+# env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# vite
+apps/web/dist/
+apps/web/.vite/
+
+# n8n local data
+services/n8n/.n8n/
+services/n8n/data/
+
+# typescript build info
+*.tsbuildinfo

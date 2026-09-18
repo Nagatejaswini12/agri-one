@@ -1,0 +1,45 @@
+{
+  "appName": "AGRI ONE",
+  "nav": {
+    "dashboard": "होम",
+    "plan": "योजना",
+    "grow": "उगाना",
+    "protect": "सुरक्षा",
+    "sell": "बिक्री",
+    "more": "अधिक",
+    "farms": "मेरे खेत",
+    "scanCrop": "फसल स्कैन करें",
+    "weather": "मौसम और सलाह",
+    "soilWater": "मिट्टी और पानी",
+    "pestAlerts": "कीट चेतावनी",
+    "market": "बाज़ार विश्लेषण",
+    "marketplace": "मार्केटप्लेस",
+    "schemes": "सरकारी योजनाएं",
+    "reports": "रिपोर्ट",
+    "scanHistory": "स्कैन इतिहास",
+    "voiceAi": "वॉइस AI"
+  },
+  "stages": {
+    "plan": {
+      "title": "योजना",
+      "description": "आपके खेत और मिट्टी की जानकारी।"
+    },
+    "protect": {
+      "title": "सुरक्षा",
+      "description": "फसल स्कैनिंग और कीट चेतावनियाँ।"
+    },
+    "sell": {
+      "title": "बिक्री",
+      "description": "वर्तमान बाज़ार जानकारी और खरीदार।"
+    },
+    "more": {
+      "title": "अधिक",
+      "description": "योजनाएं, रिपोर्ट और स्कैन इतिहास।"
+    }
+  },
+  "common": {
+    "comingSoon": "यह मॉड्यूल जल्द आ रहा है।",
+    "dataUnavailable": "लाइव डेटा अभी उपलब्ध नहीं है।",
+    "selectLanguage": "अपनी भाषा चुनें"
+  }
+}
