@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAppStore } from "@/stores/useAppStore";
-import { SUPPORTED_LANGUAGES, loadLanguage } from "@/i18n";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useFarmerProfile, useSyncLanguageFromProfile } from "@/modules/profile/hooks";
 
 // Mirrors the report's PLAN → GROW → PROTECT → SELL journey. Home and More
 // sit outside that journey; Voice AI is reachable from anywhere via the
@@ -16,36 +16,21 @@ const STAGE_NAV_ITEMS: { to: string; key: string }[] = [
 
 export function AppShell() {
   const { t } = useTranslation();
-  const language = useAppStore((s) => s.language);
-  const setLanguage = useAppStore((s) => s.setLanguage);
+  const { data: profile } = useFarmerProfile();
+  useSyncLanguageFromProfile(profile);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="flex items-center justify-between border-b bg-white px-4 py-3">
         <span className="text-lg font-bold text-green-800">{t("appName")}</span>
         <div className="flex items-center gap-3">
+          <NavLink to="/profile" className="text-sm font-medium text-gray-600">
+            {profile?.name || profile?.email || t("nav.dashboard")}
+          </NavLink>
           <NavLink to="/more" className="text-sm font-medium text-gray-600">
             {t("nav.more")}
           </NavLink>
-          <label className="sr-only" htmlFor="language-select">
-            {t("common.selectLanguage")}
-          </label>
-          <select
-            id="language-select"
-            value={language}
-            onChange={(e) => {
-              const lang = e.target.value as typeof language;
-              setLanguage(lang);
-              void loadLanguage(lang);
-            }}
-            className="rounded border px-2 py-1 text-sm"
-          >
-            {SUPPORTED_LANGUAGES.map(({ code, label }) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <LanguageSwitcher />
         </div>
       </header>
 

@@ -5,24 +5,27 @@
 export type SupportedLanguage = "en" | "ta" | "te" | "hi";
 
 export interface Farmer {
+  /** Same id as the Supabase auth user — no separate profile id. */
   id: string;
-  name: string;
-  contact: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
   preferredLanguage: SupportedLanguage;
-  authProviderId: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Farm {
   id: string;
   farmerId: string;
   name: string;
-  latitude: number;
-  longitude: number;
-  state: string;
-  district: string;
-  areaAcres: number;
+  latitude: number | null;
+  longitude: number | null;
+  state: string | null;
+  district: string | null;
+  areaAcres: number | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface FarmCrop {
@@ -41,6 +44,7 @@ export interface SoilRecord {
   id: string;
   farmId: string;
   source: SoilRecordSource;
+  soilType: string | null;
   nitrogen: number | null;
   phosphorus: number | null;
   potassium: number | null;
@@ -48,6 +52,54 @@ export interface SoilRecord {
   organicCarbon: number | null;
   testedOn: string | null;
   documentUrl: string | null;
+  createdAt: string;
+}
+
+export type DiagnosisCategory = "disease" | "pest" | "healthy" | "inconclusive";
+export type DiagnosisConfidenceLevel = "high" | "medium" | "low";
+
+export interface DiagnosisFinding {
+  label: string;
+  category: DiagnosisCategory;
+  /**
+   * The vision model's own reported probability (0-1) for this label —
+   * a model score, not a calibrated real-world certainty. Always render
+   * this as "the model's estimated likelihood," never as accuracy.
+   */
+  confidence: number;
+}
+
+export interface DiagnosisEvidenceImage {
+  /** A real reference image the classifier matched against, not a generated illustration. */
+  referenceImageUrl: string;
+  matchScore: number;
+}
+
+/**
+ * The Crop Diagnosis Agent's structured result. Deliberately has no
+ * pesticide/chemical field anywhere in this shape — see
+ * docs/architecture.md "Content rules". When evidence is insufficient,
+ * primaryFinding.category is "inconclusive" and recommendExpertConsult
+ * is true, rather than a forced diagnosis.
+ */
+export interface CropDiagnosisResult {
+  cropName: string | null;
+  primaryFinding: DiagnosisFinding;
+  alternativePossibilities: DiagnosisFinding[];
+  visualEvidence: DiagnosisEvidenceImage[];
+  confidenceLevel: DiagnosisConfidenceLevel;
+  careGuidance: {
+    /** Non-chemical cultural/prevention practices only. */
+    culturalPractices: string[];
+    monitoring: string[];
+  };
+  recommendExpertConsult: boolean;
+  expertConsultReason: string | null;
+  disclaimer: string;
+  modelInfo: {
+    provider: string;
+    ranAt: string;
+  };
 }
 
 export interface Scan {
@@ -55,7 +107,7 @@ export interface Scan {
   farmId: string;
   cropId: string;
   imageUrl: string;
-  diagnosisResult: Record<string, unknown> | null;
+  diagnosisResult: CropDiagnosisResult | null;
   confidence: number | null;
   createdAt: string;
 }

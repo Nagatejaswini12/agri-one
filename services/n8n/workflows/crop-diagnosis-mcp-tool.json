@@ -1,0 +1,47 @@
+{
+  "name": "Crop Diagnosis - MCP Tool",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            { "name": "imageUrl" },
+            { "name": "cropName" }
+          ]
+        }
+      },
+      "id": "tool-trigger",
+      "name": "Tool Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "notesInFlow": true,
+      "notes": "diagnose_crop_image(imageUrl, cropName?) — same two params as documented. Add a 'Call n8n Workflow Tool' node in the existing MCP Server workflow (the one already exposing get_weather) pointed at THIS workflow; that is the only edit made to the live MCP setup, and it does not touch the get_weather node."
+    },
+    {
+      "parameters": {
+        "source": "localFile",
+        "workflowPath": "./crop-diagnosis-core.json",
+        "workflowInputs": {
+          "value": {
+            "imageUrl": "={{ $json.imageUrl }}",
+            "cropName": "={{ $json.cropName }}",
+            "locale": "en"
+          }
+        }
+      },
+      "id": "call-core",
+      "name": "Call Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [240, 0],
+      "notesInFlow": true,
+      "notes": "workflowPath is a placeholder — after importing, repoint this node at Crop Diagnosis - Core by its workflow ID."
+    }
+  ],
+  "connections": {
+    "Tool Trigger": { "main": [[{ "node": "Call Core", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

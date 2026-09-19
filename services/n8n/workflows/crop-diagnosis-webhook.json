@@ -1,0 +1,113 @@
+{
+  "name": "Crop Diagnosis - Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crop-diagnosis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "crop-diagnosis"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/auth/v1/user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" },
+            { "name": "Authorization", "value": "={{ $json.headers.authorization }}" }
+          ]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "verify-jwt",
+      "name": "Verify JWT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "notesInFlow": true,
+      "notes": "Same JWT-verification approach the Orchestrator uses for every agent — see docs/architecture.md. Only the anon key + the farmer's own bearer token are used; no service-role key anywhere in this workflow."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": { "type": "number", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "auth-failed",
+      "name": "Auth Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: \"unavailable\", reason: \"Not signed in.\" } }}",
+        "options": { "responseCode": 401 }
+      },
+      "id": "respond-unauthorized",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, -120]
+    },
+    {
+      "parameters": {
+        "source": "localFile",
+        "workflowPath": "./crop-diagnosis-core.json",
+        "workflowInputs": {
+          "value": {
+            "imageUrl": "={{ $('Webhook').item.json.body.imageSignedUrl }}",
+            "cropName": "={{ $('Webhook').item.json.body.cropName }}",
+            "locale": "={{ $('Webhook').item.json.body.locale }}"
+          }
+        }
+      },
+      "id": "call-core",
+      "name": "Call Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [720, 120],
+      "notesInFlow": true,
+      "notes": "workflowPath is a placeholder — after importing both workflows, repoint this node at Crop Diagnosis - Core by its workflow ID in the n8n UI."
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json }}" },
+      "id": "respond-with-result",
+      "name": "Respond With Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 120]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Verify JWT", "type": "main", "index": 0 }]] },
+    "Verify JWT": { "main": [[{ "node": "Auth Failed?", "type": "main", "index": 0 }]] },
+    "Auth Failed?": {
+      "main": [
+        [{ "node": "Respond Unauthorized", "type": "main", "index": 0 }],
+        [{ "node": "Call Core", "type": "main", "index": 0 }]
+      ]
+    },
+    "Call Core": { "main": [[{ "node": "Respond With Result", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
