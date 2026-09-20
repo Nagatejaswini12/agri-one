@@ -162,7 +162,7 @@
     "switchFarm": "Switch farm",
     "soilSummary": "Soil",
     "viewSoil": "View soil data",
-    "agentsComingSoon": "Weather, market, pest and scheme guidance will appear here once those agents are connected in a later phase."
+    "agentsComingSoon": "Market, pest and scheme guidance will appear here once those agents are connected in a later phase. Weather and crop diagnosis are already available in their own sections."
   },
   "scanHistory": {
     "empty": "No scans yet for this farm.",
