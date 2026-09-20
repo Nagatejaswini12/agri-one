@@ -148,7 +148,10 @@
     "otherPossibilities": "Other possibilities considered",
     "visualEvidence": "Similar reference images",
     "careGuidance": "Care & prevention",
-    "monitoring": "What to watch for"
+    "monitoring": "What to watch for",
+    "inconclusiveNote": "The model could not identify this confidently enough to report a finding.",
+    "fallbackDisclaimer": "This is an automated visual estimate, not a guaranteed agricultural diagnosis. Confirm with a qualified local agricultural expert before taking any action.",
+    "historySaveFailed": "This diagnosis could not be saved to your scan history, but the result above is still valid."
   },
   "dashboard": {
     "greeting": "Welcome, {{name}}",

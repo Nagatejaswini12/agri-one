@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CropDiagnosisResult, DataResult } from "@agri-one/shared-types";
+import type { CropDiagnosisResult } from "@agri-one/shared-types";
 import { useFarms, useFarmCrops } from "@/modules/farms/hooks";
-import { useDiagnoseCrop } from "@/modules/scan-crop/hooks";
+import { useDiagnoseCrop, type DiagnoseCropOutcome } from "@/modules/scan-crop/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
@@ -27,9 +27,11 @@ function DiagnosisResultView({ data }: { data: CropDiagnosisResult }) {
           </span>
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          {primaryFinding.category === "disease"
-            ? t("scanCrop.modelEstimate", { percent: Math.round(primaryFinding.confidence * 100) })
-            : t("scanCrop.healthyNote")}
+          {primaryFinding.category === "healthy"
+            ? t("scanCrop.healthyNote")
+            : primaryFinding.category === "inconclusive"
+              ? t("scanCrop.inconclusiveNote")
+              : t("scanCrop.modelEstimate", { percent: Math.round(primaryFinding.confidence * 100) })}
         </p>
         <p className="mt-1 text-xs text-gray-400">{t("scanCrop.notCalibratedNote")}</p>
       </div>
@@ -93,7 +95,9 @@ function DiagnosisResultView({ data }: { data: CropDiagnosisResult }) {
         </div>
       ) : null}
 
-      <p className="border-t pt-3 text-xs text-gray-500">{data.disclaimer}</p>
+      <p className="border-t pt-3 text-xs text-gray-500">
+        {data.disclaimer || t("scanCrop.fallbackDisclaimer")}
+      </p>
     </div>
   );
 }
@@ -122,12 +126,12 @@ export default function ScanCropPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const diagnoseCrop = useDiagnoseCrop();
-  const [lastResult, setLastResult] = useState<DataResult<CropDiagnosisResult> | null>(null);
+  const [lastOutcome, setLastOutcome] = useState<DiagnoseCropOutcome | null>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
     setFile(selected);
-    setLastResult(null);
+    setLastOutcome(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(selected ? URL.createObjectURL(selected) : null);
   }
@@ -142,13 +146,13 @@ export default function ScanCropPage() {
   async function handleSubmit() {
     if (!file || !activeFarmId || !selectedCropId) return;
     const cropName = crops?.find((c) => c.id === selectedCropId)?.cropName ?? null;
-    const result = await diagnoseCrop.mutateAsync({
+    const outcome = await diagnoseCrop.mutateAsync({
       farmId: activeFarmId,
       cropId: selectedCropId,
       cropName,
       file
     });
-    setLastResult(result);
+    setLastOutcome(outcome);
   }
 
   const canSubmit = !!file && !!activeFarmId && !!selectedCropId && !diagnoseCrop.isPending;
@@ -233,7 +237,14 @@ export default function ScanCropPage() {
                 <img src={previewUrl} alt={t("scanCrop.uploadPhoto")} className="mt-3 h-40 w-40 rounded object-cover" />
               ) : null}
 
-              {diagnoseCrop.isError ? <p className="mt-2 text-sm text-red-600">{t("scanCrop.uploadError")}</p> : null}
+              {diagnoseCrop.isError ? (
+                <div className="mt-2 text-sm text-red-600">
+                  <p>{t("scanCrop.uploadError")}</p>
+                  {diagnoseCrop.error instanceof Error && diagnoseCrop.error.message ? (
+                    <p className="mt-1 text-xs opacity-75">{diagnoseCrop.error.message}</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <button
                 type="button"
@@ -246,13 +257,22 @@ export default function ScanCropPage() {
             </div>
           ) : null}
 
-          {lastResult && lastResult.status === "unavailable" ? (
+          {lastOutcome && lastOutcome.result.status === "unavailable" ? (
             <div className="mt-4">
-              <DataUnavailable reason={lastResult.reason} />
+              <DataUnavailable reason={lastOutcome.result.reason} />
             </div>
           ) : null}
 
-          {lastResult && lastResult.status === "ok" ? <DiagnosisResultView data={lastResult.data} /> : null}
+          {lastOutcome && lastOutcome.result.status === "ok" ? (
+            <>
+              <DiagnosisResultView data={lastOutcome.result.data} />
+              {lastOutcome.historySaveFailed ? (
+                <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                  {t("scanCrop.historySaveFailed")}
+                </p>
+              ) : null}
+            </>
+          ) : null}
         </>
       ) : null}
     </div>

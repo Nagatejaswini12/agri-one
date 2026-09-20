@@ -10,7 +10,7 @@ fails, the module must return/render an "unavailable" state.
 | Soil | Farmer-entered values / Soil Health Card upload | No public API; this is inherently real because it's farmer-provided. |
 | Pest | Pest/disease knowledge base + regional advisories where available | Falls back to general seasonal guidance, clearly labeled as such if no live regional alert exists. |
 | Government Schemes | myscheme.gov.in / state agri department pages | No unified API — curated via a scheduled n8n refresh job, each entry timestamped and source-linked, not generated per-request. |
-| Crop Diagnosis | Vision/diagnosis model (vendor TBD) | Only runs on farmer-uploaded images; low-confidence results return "inconclusive," never a guessed label. |
+| Crop Diagnosis | Roboflow Serverless Hosted API, model `crop-disease-axhjj/1` | Only runs on farmer-uploaded images; low-confidence, empty, unsupported, or ambiguous results return `category: "inconclusive"`, never a guessed label. **Prototype scope**: 9 classes, tomato-focused — not comprehensive crop coverage, and not a guaranteed agricultural diagnosis. |
 | Translation / Voice | Bhashini (Govt. of India) preferred; Google Cloud Translation/Speech as fallback | Needed for Tamil/Telugu/Hindi quality; vendor decision required before Phase 6. |
 | Buyers | No known open verified dataset | Requires manual curation or a partner feed — flagged as the largest data-availability risk. |
 

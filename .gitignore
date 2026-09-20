@@ -25,3 +25,6 @@ services/n8n/data/
 
 # typescript build info
 *.tsbuildinfo
+
+# supabase cli scratch
+supabase/.temp/

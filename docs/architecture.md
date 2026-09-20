@@ -123,35 +123,60 @@ farm context to run against.
 
 ## Phase 2 — Crop Diagnosis Agent
 
-- **n8n**: `services/n8n/workflows/crop-diagnosis-core.json` calls the
-  Kindwise Crop Health API (a vision model trained specifically on crop
-  disease/pest images, not a general-purpose multimodal LLM — chosen so
-  confidence scores are real classifier probabilities, not fluent-sounding
-  guesses) and maps its response into `CropDiagnosisResult`
-  (`packages/shared-types`). `crop-diagnosis-webhook.json` is the
-  `POST /webhook/crop-diagnosis` path the frontend calls via
-  `callAgentWebhook()`; `crop-diagnosis-mcp-tool.json` exposes the same
-  logic as the `diagnose_crop_image(imageUrl, cropName?)` MCP tool,
-  alongside the existing `get_weather` tool. See `services/n8n/README.md`
-  for the exact node-by-node layout and import order.
+- **Provider**: Roboflow's Serverless Hosted API, model
+  `crop-disease-axhjj/1` (Roboflow 3.0 Object Detection, 9 classes,
+  tomato-focused). Originally built against Kindwise's Crop Health API;
+  switched to Roboflow when the Kindwise account had no available credits
+  and no key, without any fake/mocked diagnosis data at any point.
+  **Prototype scope**: the model's class coverage is narrow — this is
+  not comprehensive crop coverage, and its output is a model estimate,
+  not a guaranteed agricultural diagnosis.
+- **n8n**: two live workflows. `Crop Diagnosis - Core`
+  (`AOURgRfTVM9bsGzV`, exported to
+  `services/n8n/workflows/crop-diagnosis-core.json`) downloads the image,
+  resizes it, base64-encodes it, calls Roboflow, and maps the response
+  into `CropDiagnosisResult` (`packages/shared-types`) — chosen over a
+  general-purpose multimodal LLM so confidence scores are real classifier
+  probabilities, not fluent-sounding guesses. `Crop Diagnosis API`
+  (`FPR9ZKAIO6ql9E8v`) is the `POST /webhook/crop-diagnosis` path the
+  frontend calls via `callAgentWebhook()`; it takes
+  `{ imageUrl, cropName, locale }` and delegates to Core. See
+  `services/n8n/README.md` for the node-by-node layout, why the
+  resize/base64 steps are load-bearing, the credential setup, and the
+  draft-vs-published gotcha that silently runs stale logic in production.
+- **Mapping rules**: any empty, low-confidence, ambiguous (two top
+  predictions within 0.15 of each other), or malformed/unsupported
+  prediction becomes `category: "inconclusive"` with
+  `recommendExpertConsult: true` — never a forced label. Roboflow reports
+  only a class name + its own confidence score, with no reference images
+  and no prevention/treatment text of any kind (chemical or otherwise) —
+  `visualEvidence` and `careGuidance` are therefore left as empty arrays
+  rather than invented, pending a possible future curated non-chemical
+  guidance lookup (not built yet).
 - **Unlike other agents, this workflow never writes to Supabase.** The
   frontend uploads the photo to the private `crop-scans` Storage bucket,
   creates its own short-lived signed URL, calls the webhook, and on an
   `"ok"` result persists the `scans` row itself — the same
   frontend-persists pattern described in "Data flow" step 6, just made
   explicit here since n8n holds no Storage/DB credential for this
-  feature at all (only `CROP_HEALTH_API_KEY` plus the anon key needed to
-  verify the farmer's JWT).
+  feature at all (only the Roboflow credential plus the anon key needed
+  to verify the farmer's JWT).
 - **Schema**: `supabase/migrations/20260919140000_phase2_scans.sql` adds
   `scans` (farm-scoped RLS, same pattern as `soil_records`) and the
   `crop-scans` bucket (private, object RLS scoped to `auth.uid()`).
 - **Frontend**: `apps/web/src/modules/scan-crop` — farm/crop selection,
   photo capture/upload, and a result view that visually separates the
   model's reported confidence from certainty (bucketed high/medium/low
-  with copy stating it's a model score), shows the classifier's own
-  matched reference images as evidence, non-chemical care/monitoring
-  guidance, and an expert-consult banner whenever the agent recommends
-  one.
+  with copy stating it's a model score) and shows an expert-consult
+  banner whenever the agent recommends one; the evidence-images and
+  care-guidance sections simply don't render while those arrays are
+  empty. `normalize.ts` sits between the webhook and the UI: the agent
+  runs in n8n, outside this repo's type checking, so a workflow edit can
+  change its payload without the frontend knowing. It coerces whatever
+  arrives into `CropDiagnosisResult` — absent arrays become empty, an
+  unusable finding becomes `unavailable`, confidence is clamped to 0–1 —
+  so a contract drift degrades to an honest state instead of crashing
+  the page. It never fills in content the agent didn't send.
 
 ## Hosting (Phase 8)
 

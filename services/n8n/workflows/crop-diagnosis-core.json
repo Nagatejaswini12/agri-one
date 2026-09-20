@@ -5,114 +5,304 @@
       "parameters": {
         "workflowInputs": {
           "values": [
-            { "name": "imageUrl" },
-            { "name": "cropName" },
-            { "name": "locale" }
+            {
+              "name": "imageUrl"
+            },
+            {
+              "name": "cropName"
+            },
+            {
+              "name": "locale"
+            }
           ]
         }
       },
-      "id": "core-trigger",
+      "id": "46164844-0320-4f7c-a129-13d55babd1d5",
       "name": "Core Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [0, 0]
+      "position": [
+        -992,
+        128
+      ]
     },
     {
       "parameters": {
         "url": "={{ $json.imageUrl }}",
-        "options": { "response": { "response": { "responseFormat": "file" } } }
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
       },
-      "id": "download-image",
+      "id": "15f9e4bb-1c44-40f2-8bec-7dcd5d2d1b4a",
       "name": "Download Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [240, 0]
+      "position": [
+        -720,
+        128
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "resize",
+        "dataPropertyName": "data",
+        "width": 1024,
+        "height": 1024,
+        "resizeOption": "onlyIfLarger",
+        "options": {}
+      },
+      "id": "303cf84c-ad6a-4570-9e41-dfe3ebacda35",
+      "name": "Resize Image",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        256
+      ],
+      "notes": "Farmer phone photos are several MB. n8n switches the HTTP Request node into streaming mode for large request bodies, which makes it return an unparsed stream instead of Roboflow JSON. Capping the longest side at 1024px keeps the base64 body small enough to avoid that, and Roboflow downscales its input anyway."
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "binaryPropertyName": "data",
+        "destinationKey": "imageBase64",
+        "options": {}
+      },
+      "id": "2371a68a-ac52-44a8-805a-94de1b55a99f",
+      "name": "Image To Base64",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        256
+      ],
+      "notes": "n8n stores binary on the filesystem, so {{ $binary.data.data }} yields a storage marker, not base64 — Roboflow rejected that as \"Empty image payload\". This node reads the stored bytes and puts real base64 into json.imageBase64 for the request body."
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "imageBase64",
+        "binaryPropertyName": "imageBase64File",
+        "options": {
+          "encoding": "utf8",
+          "mimeType": "application/x-www-form-urlencoded",
+          "fileName": "image.b64"
+        }
+      },
+      "id": "d71102d7-2d82-4d04-9cd0-c704ea9f100e",
+      "name": "Base64 To File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        256
+      ],
+      "notes": "Roboflow needs the image as a base64 STRING. Sending it as a raw body makes n8n stream the request, and it then returns an unparsed stream object instead of JSON. Wrapping the base64 text as a binary property lets the HTTP node use its binary-upload path, which parses the response correctly while Roboflow still receives base64 text."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://crop.kindwise.com/api/v1/identification?details=description,symptoms,treatment,spreading,severity,common_names&language={{ $('Core Trigger').item.json.locale || 'en' }}",
-        "sendHeaders": true,
-        "headerParameters": {
+        "url": "https://serverless.roboflow.com/crop-disease-axhjj/1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
           "parameters": [
-            { "name": "Api-Key", "value": "={{ $env.CROP_HEALTH_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": " api_key",
+              "value": "SET_IN_N8N_CREDENTIAL"
+            }
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ images: [$binary.data.data], similar_images: true }) }}",
-        "options": { "timeout": 30000 }
+        "contentType": "binaryData",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        },
+        "inputDataFieldName": "imageBase64File"
       },
-      "id": "kindwise-health-assessment",
-      "name": "Kindwise Health Assessment",
+      "id": "c7076fd9-39b6-4805-8592-8c36dac578a7",
+      "name": "Roboflow Detect",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [480, 0],
-      "notesInFlow": true,
-      "notes": "Server-side only — Api-Key comes from services/n8n/.env (CROP_HEALTH_API_KEY), never sent to or stored in the frontend. Request shape verified against flowerchecker/kindwise-api-client (the vendor's own reference client): image is base64 inside the JSON body ($binary.data.data is n8n's own base64 encoding of the downloaded file), details/language are query params. 'treatment' is requested so Map Diagnosis Result can read its prevention/biological sub-keys — its 'chemical' sub-key is deliberately never read downstream."
+      "typeVersion": 4.5,
+      "position": [
+        160,
+        256
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "09Kxolhl0Ov6DIjM",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.statusCode }}",
-              "rightValue": 200,
-              "operator": { "type": "number", "operation": "lt" }
+              "rightValue": 400,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "id": "e0393242-b1a9-41db-b5b8-231ff3a9408b"
             }
           ],
           "combinator": "or"
-        }
+        },
+        "options": {}
       },
-      "id": "api-failed",
+      "id": "00e3a4ff-d688-4cb9-bc69-6812358b5fe2",
       "name": "API Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [720, 0]
+      "position": [
+        -240,
+        128
+      ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            { "name": "status", "value": "unavailable", "type": "string" },
-            {
-              "name": "reason",
-              "value": "={{ 'Crop Health API request failed: ' + ($json.statusCode || 'no response') }}",
-              "type": "string"
-            }
-          ]
-        }
+        "jsCode": "const core = $('Core Trigger').first().json;\n\nconst statusCode = $json.statusCode ?? \"unknown\";\nconst responseBody = $json.body ?? {};\n\nlet errorMessage = \"No error message returned.\";\n\nif (typeof responseBody === \"string\") {\n  errorMessage = responseBody;\n} else if (responseBody?.message) {\n  errorMessage = responseBody.message;\n} else if (responseBody?.error) {\n  errorMessage = responseBody.error;\n}\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      asOf: new Date().toISOString(),\n      source: \"roboflow-crop-disease-axhjj-v1\",\n      data: {\n        cropName: core.cropName ?? null,\n\n        primaryFinding: {\n          label: \"Unavailable\",\n          category: \"inconclusive\",\n          confidence: 0\n        },\n\n        alternativePossibilities: [],\n        visualEvidence: [],\n        confidenceLevel: \"low\",\n\n        careGuidance: {\n          culturalPractices: [],\n          monitoring: []\n        },\n\n        recommendExpertConsult: true,\n\n        expertConsultReason:\n          `Roboflow request failed with HTTP status ${statusCode}. ${errorMessage}`,\n\n        disclaimer:\n          \"The automated crop-disease service was unavailable. No diagnosis was generated.\",\n\n        modelInfo: {\n          provider: \"roboflow\",\n          modelId: \"crop-disease-axhjj/1\",\n          ranAt: new Date().toISOString()\n        }\n      }\n    }\n  }\n];\n\n"
       },
-      "id": "build-unavailable-result",
+      "id": "b68f987a-98f1-4d3b-848f-abc7c0c3b632",
       "name": "Build Unavailable Result",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [960, -120]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        32
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Maps the raw Kindwise Crop Health response into the CropDiagnosisResult\n// contract (packages/shared-types). Shape verified against\n// flowerchecker/kindwise-api-client (the vendor's own reference client):\n// result = { is_plant: {probability,binary,threshold}, crop: {suggestions:[...]}, disease: {suggestions:[...]} }.\n// There is NO is_healthy field — the API gives no positive health score,\n// only disease-candidate probabilities, so \"healthy\" below is reported\n// as \"no significant disease signal\" rather than a guaranteed clean\n// bill of health. Every field here comes from the API's own reported\n// values — nothing is invented, and a low-confidence/unrecognized\n// result becomes \"inconclusive\" rather than a forced diagnosis.\nconst NOT_A_PLANT_THRESHOLD = 0.5;\nconst HIGH_THRESHOLD = 0.75;\nconst MEDIUM_THRESHOLD = 0.4;\nconst MIN_USABLE_THRESHOLD = 0.2;\n\nconst body = $input.first().json.body ?? $input.first().json;\nconst result = body?.result ?? {};\nconst isPlant = result.is_plant?.probability ?? null;\nconst suggestions = result.disease?.suggestions ?? [];\nconst top = suggestions[0] ?? null;\n\nlet primaryFinding;\nlet recommendExpertConsult = false;\nlet expertConsultReason = null;\n\nif (isPlant !== null && isPlant < NOT_A_PLANT_THRESHOLD) {\n  primaryFinding = { label: \"Inconclusive\", category: \"inconclusive\", confidence: isPlant };\n  recommendExpertConsult = true;\n  expertConsultReason = \"The model isn't confident this photo clearly shows a plant/crop.\";\n} else if (!top || top.probability < MIN_USABLE_THRESHOLD) {\n  primaryFinding = { label: \"No significant disease detected\", category: \"healthy\", confidence: top?.probability ?? 0 };\n} else {\n  primaryFinding = { label: top.name, category: \"disease\", confidence: top.probability };\n  if (top.probability < MEDIUM_THRESHOLD) {\n    recommendExpertConsult = true;\n    expertConsultReason = \"Model confidence is low — verify with a local expert before acting.\";\n  }\n}\n\nconst confidenceLevel =\n  primaryFinding.category === \"healthy\"\n    ? primaryFinding.confidence < 0.1 ? \"high\" : \"medium\"\n    : primaryFinding.confidence >= HIGH_THRESHOLD\n      ? \"high\"\n      : primaryFinding.confidence >= MEDIUM_THRESHOLD\n        ? \"medium\"\n        : \"low\";\n\nconst alternativePossibilities = suggestions.slice(1, 4).map((s) => ({\n  label: s.name,\n  category: \"disease\",\n  confidence: s.probability\n}));\n\nconst visualEvidence = (top?.similar_images ?? []).slice(0, 4).map((img) => ({\n  referenceImageUrl: img.url,\n  matchScore: img.similarity ?? 0\n}));\n\n// Non-chemical guidance sourced directly from Kindwise's own 'treatment'\n// detail (requested above): only the 'prevention' and 'biological'\n// sub-keys are ever read here — 'chemical' is deliberately never\n// touched, so a pesticide/chemical recommendation cannot reach the\n// frontend even if Kindwise's own data includes one.\nconst toList = (v) => (Array.isArray(v) ? v.map(String) : v ? [String(v)] : []);\nconst treatment = top?.details?.treatment ?? {};\nconst culturalPractices = [...toList(treatment.prevention), ...toList(treatment.biological)];\n\nconst monitoring = [];\nif (top?.details?.symptoms) monitoring.push(`Watch for: ${top.details.symptoms}`);\nif (top?.details?.spreading) monitoring.push(`Spreads via: ${top.details.spreading}`);\n\nif (primaryFinding.category === \"disease\" && culturalPractices.length === 0) {\n  recommendExpertConsult = true;\n  expertConsultReason = expertConsultReason ?? \"No vetted non-chemical guidance is available from the data source for this specific finding.\";\n}\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: \"kindwise-crop-health\",\n      data: {\n        cropName: $('Core Trigger').first().json.cropName ?? null,\n        primaryFinding,\n        alternativePossibilities,\n        visualEvidence,\n        confidenceLevel,\n        careGuidance: { culturalPractices, monitoring },\n        recommendExpertConsult,\n        expertConsultReason,\n        disclaimer:\n          \"This is an automated visual estimate, not a lab diagnosis. Confirm with a qualified local agricultural expert before taking any action, especially before applying any treatment.\",\n        modelInfo: { provider: \"kindwise-crop-health\", ranAt: new Date().toISOString() }\n      }\n    }\n  }\n];"
+        "jsCode": "// Maps the Roboflow crop-disease object-detection response\n// (crop-disease-axhjj/1) into the CropDiagnosisResult contract.\n//\n// Current model:\n//   crop-disease-axhjj/1\n//   Roboflow 3.0 Object Detection\n//   9 classes, focused on tomato leaves.\n//\n// Important:\n// - Roboflow returns object detections with class + confidence.\n// - Multiple detections of the SAME class are normal.\n// - We only treat predictions as ambiguous when DIFFERENT classes\n//   have very similar confidence.\n// - No treatment/prevention text is invented.\n// - HTTP failures are handled as unavailable.\n// - Low-confidence or unclear results remain inconclusive.\n\nconst INCONCLUSIVE_THRESHOLD = 0.4;\nconst AMBIGUOUS_MARGIN = 0.15;\nconst HIGH_THRESHOLD = 0.75;\n\nconst MODEL_ID = \"crop-disease-axhjj/1\";\nconst SOURCE = \"roboflow-crop-disease-axhjj-v1\";\n\nconst input = $input.first()?.json ?? {};\n\n// ------------------------------------------------------------\n// HTTP response handling\n// ------------------------------------------------------------\n\nconst statusCode = Number(\n  input.statusCode ??\n  input.status ??\n  200\n);\n\nlet body = input.body ?? input;\n\n// Parse body if n8n returns it as a string\nif (typeof body === \"string\") {\n  try {\n    body = JSON.parse(body);\n  } catch {\n    body = {};\n  }\n}\n\n// ------------------------------------------------------------\n// HTTP/API failure\n// ------------------------------------------------------------\n\nif (statusCode >= 400) {\n  return [\n    {\n      json: {\n        status: \"unavailable\",\n        asOf: new Date().toISOString(),\n        source: SOURCE,\n        data: {\n          cropName: $('Core Trigger').first().json.cropName ?? null,\n\n          primaryFinding: {\n            label: \"Unavailable\",\n            category: \"inconclusive\",\n            confidence: 0\n          },\n\n          alternativePossibilities: [],\n\n          visualEvidence: [],\n\n          confidenceLevel: \"low\",\n\n          careGuidance: {\n            culturalPractices: [],\n            monitoring: []\n          },\n\n          recommendExpertConsult: true,\n\n          expertConsultReason:\n            `Roboflow inference request failed with HTTP status ${statusCode}.`,\n\n          disclaimer:\n            \"The automated crop-disease service was unavailable. No diagnosis was generated.\",\n\n          modelInfo: {\n            provider: \"roboflow\",\n            modelId: MODEL_ID,\n            ranAt: new Date().toISOString()\n          }\n        }\n      }\n    }\n  ];\n}\n\n// ------------------------------------------------------------\n// Prediction extraction\n// ------------------------------------------------------------\n\nconst rawPredictions = Array.isArray(body?.predictions)\n  ? body.predictions\n  : [];\n\nconst predictions = rawPredictions\n  .filter(\n    (p) =>\n      p &&\n      typeof p.class === \"string\" &&\n      p.class.trim().length > 0 &&\n      typeof p.confidence === \"number\" &&\n      Number.isFinite(p.confidence)\n  )\n  .sort((a, b) => b.confidence - a.confidence);\n\nconst top = predictions[0] ?? null;\n\n// ------------------------------------------------------------\n// Ambiguity check\n// ------------------------------------------------------------\n//\n// Object detection can return multiple boxes for the same class.\n// Those are NOT automatically competing diagnoses.\n//\n// Find the strongest prediction belonging to a DIFFERENT class.\n\nconst secondDifferentClass = top\n  ? predictions.find((p) => p.class !== top.class)\n  : null;\n\nconst isAmbiguous =\n  !!top &&\n  !!secondDifferentClass &&\n  Math.abs(\n    top.confidence - secondDifferentClass.confidence\n  ) < AMBIGUOUS_MARGIN;\n\n// ------------------------------------------------------------\n// Primary finding\n// ------------------------------------------------------------\n\nlet primaryFinding;\nlet recommendExpertConsult = false;\nlet expertConsultReason = null;\n\nif (!top) {\n  primaryFinding = {\n    label: \"Inconclusive\",\n    category: \"inconclusive\",\n    confidence: 0\n  };\n\n  recommendExpertConsult = true;\n\n  expertConsultReason =\n    \"The model did not return a usable prediction for this image.\";\n}\n\nelse if (top.confidence < INCONCLUSIVE_THRESHOLD) {\n  primaryFinding = {\n    label: \"Inconclusive\",\n    category: \"inconclusive\",\n    confidence: top.confidence\n  };\n\n  recommendExpertConsult = true;\n\n  expertConsultReason =\n    \"Model confidence is too low to report a reliable finding.\";\n}\n\nelse if (isAmbiguous) {\n  primaryFinding = {\n    label: \"Inconclusive\",\n    category: \"inconclusive\",\n    confidence: top.confidence\n  };\n\n  recommendExpertConsult = true;\n\n  expertConsultReason =\n    \"Different possible classes have very similar confidence, so no single finding is reported.\";\n}\n\nelse {\n  const label = top.class.trim();\n\n  // Explicit healthy label\n  const isExplicitHealthy = /healthy/i.test(label);\n\n  // Disease-related labels in this model\n  const looksLikeDisease =\n    /blight|bacterial|mosaic|virus|mold|septoria|spider mites|spot|rust|rot|disease/i.test(\n      label\n    );\n\n  if (isExplicitHealthy) {\n    primaryFinding = {\n      label,\n      category: \"healthy\",\n      confidence: top.confidence\n    };\n  }\n\n  else if (looksLikeDisease) {\n    primaryFinding = {\n      label,\n      category: \"disease\",\n      confidence: top.confidence\n    };\n\n    if (top.confidence < HIGH_THRESHOLD) {\n      recommendExpertConsult = true;\n\n      expertConsultReason =\n        \"Model confidence is moderate. Verify the visual finding with a local agricultural expert before taking action.\";\n    }\n  }\n\n  else {\n    // Example: \"Tomato leaf\"\n    // This does not explicitly mean healthy or diseased.\n    primaryFinding = {\n      label: \"Inconclusive\",\n      category: \"inconclusive\",\n      confidence: top.confidence\n    };\n\n    recommendExpertConsult = true;\n\n    expertConsultReason =\n      `The model returned \"${label}\", but that label does not explicitly indicate a disease or healthy condition.`;\n  }\n}\n\n// ------------------------------------------------------------\n// Confidence level\n// ------------------------------------------------------------\n\nconst confidenceLevel =\n  primaryFinding.confidence >= HIGH_THRESHOLD\n    ? \"high\"\n    : primaryFinding.confidence >= INCONCLUSIVE_THRESHOLD\n      ? \"medium\"\n      : \"low\";\n\n// ------------------------------------------------------------\n// Alternative possibilities\n// ------------------------------------------------------------\n//\n// Only include different classes.\n// Multiple detections of the same class are ignored as alternatives.\n\nconst alternativePossibilities =\n  primaryFinding.category === \"inconclusive\"\n    ? []\n    : predictions\n        .filter((p) => p.class !== top.class)\n        .slice(0, 3)\n        .map((p) => ({\n          label: p.class,\n\n          category: /healthy/i.test(p.class)\n            ? \"healthy\"\n            : /blight|bacterial|mosaic|virus|mold|septoria|spider mites|spot|rust|rot|disease/i.test(\n                p.class\n              )\n              ? \"disease\"\n              : \"inconclusive\",\n\n          confidence: p.confidence\n        }));\n\n// ------------------------------------------------------------\n// Final CropDiagnosisResult\n// ------------------------------------------------------------\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n\n      asOf: new Date().toISOString(),\n\n      source: SOURCE,\n\n      data: {\n        cropName:\n          $('Core Trigger').first().json.cropName ?? null,\n\n        primaryFinding,\n\n        alternativePossibilities,\n\n        visualEvidence: [],\n\n        confidenceLevel,\n\n        careGuidance: {\n          culturalPractices: [],\n          monitoring: []\n        },\n\n        recommendExpertConsult,\n\n        expertConsultReason,\n\n        disclaimer:\n          \"Prototype crop-disease visual estimation using the public Roboflow model crop-disease-axhjj/1. The model has limited crop/class coverage and is not a guaranteed agricultural diagnosis. Confirm important findings with a qualified local agricultural expert before taking action.\",\n\n        modelInfo: {\n          provider: \"roboflow\",\n          modelId: MODEL_ID,\n          ranAt: new Date().toISOString()\n        }\n      }\n    }\n  }\n];"
       },
-      "id": "map-diagnosis-result",
+      "id": "e21f07e0-a184-4314-8997-90a9782706ca",
       "name": "Map Diagnosis Result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 120]
+      "position": [
+        0,
+        240
+      ]
     }
   ],
   "connections": {
-    "Core Trigger": { "main": [[{ "node": "Download Image", "type": "main", "index": 0 }]] },
-    "Download Image": { "main": [[{ "node": "Kindwise Health Assessment", "type": "main", "index": 0 }]] },
-    "Kindwise Health Assessment": { "main": [[{ "node": "API Failed?", "type": "main", "index": 0 }]] },
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "API Failed?": {
       "main": [
-        [{ "node": "Build Unavailable Result", "type": "main", "index": 0 }],
-        [{ "node": "Map Diagnosis Result", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Diagnosis Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Resize Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roboflow Detect": {
+      "main": [
+        [
+          {
+            "node": "API Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resize Image": {
+      "main": [
+        [
+          {
+            "node": "Image To Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image To Base64": {
+      "main": [
+        [
+          {
+            "node": "Base64 To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Base64 To File": {
+      "main": [
+        [
+          {
+            "node": "Roboflow Detect",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" }
+  "settings": {
+    "executionOrder": "v1"
+  }
 }
