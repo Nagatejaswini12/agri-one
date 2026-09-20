@@ -17,7 +17,8 @@ No Orchestrator exists yet — this folder started as scaffolding only
 |---|---|---|
 | `Weather - Core` | `KmugUDlkzrUu0lBw` | Calls Open-Meteo, maps to `WeatherSnapshot`. Exported as `weather-core.json`. |
 | `Weather API` | `HWWa4cQLD1CscuPj` | Public `POST /webhook/weather`. Verifies the Supabase JWT, then calls Core. Exported as `weather-api.json`. |
-| `My workflow 2` | `vHf5eRZPtpHHmV1K` | MCP Server Trigger exposing the `get_weather` tool, now pointed at Core. |
+| `My workflow 2` | `vHf5eRZPtpHHmV1K` | MCP Server Trigger exposing the `get_weather` tool. Exported as `weather-mcp-tool.json`. |
+| `Weather MCP Bridge` | `TxK28e058YeKu32L` | `GET /webhook/weather-mcp`, the unauthenticated hop `get_weather` calls. Exported as `weather-mcp-bridge.json`. |
 
 ```
 Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
@@ -60,17 +61,37 @@ Supabase table and no migration behind this feature.
 
 ### `get_weather` (MCP)
 
-The tool calls `Weather - Core` directly through a **Call n8n Workflow
-Tool** node rather than over HTTP, because the Weather API webhook
-requires a Supabase JWT that an MCP client does not have. This also fixed
-two defects in the previous version: it ignored the coordinates it was
-given, and its second parameter was mis-named `"=longitude"`.
+```
+MCP client → get_weather (httpRequestTool)
+           → GET /webhook/weather-mcp   (Weather MCP Bridge, no auth)
+           → Weather - Core → Open-Meteo
+```
 
-Note the parameter shape changed as a side effect: `toolWorkflow`
-presents a single `input` string to the caller and relies on `$fromAI` to
-extract values, so an agent-driven call works while a direct MCP call
-with raw `latitude`/`longitude` arguments does not populate them. The
-previous `httpRequestTool` declared both parameters explicitly.
+The tool is an **HTTP Request Tool**, not a Call n8n Workflow Tool. That
+matters: `httpRequestTool` derives its schema from the `$fromAI` calls in
+its query parameters, so an MCP client sees separate `latitude` and
+`longitude` parameters. `toolWorkflow` exposes only a single `input`
+string and never receives structured coordinates — it was tried first and
+returned "no data for this location" for every call, whatever the caller
+passed.
+
+Two defects in the original are fixed here: the workflow behind the tool
+ignored the coordinates it was given (Chennai was hardcoded), and the
+second parameter was mis-named `"=longitude"` so longitude never arrived
+under the right key.
+
+**Why the bridge exists and why it is unauthenticated.** `get_weather`
+cannot call `/webhook/weather`, which requires a Supabase JWT an MCP
+client has no way to obtain. The bridge is a deliberately narrow
+alternative: three nodes, whose only capability is forwarding
+`latitude`/`longitude`/`locale` to `Weather - Core` and returning the
+result. It holds no credentials, reads no Supabase table, and cannot
+reach Crop Diagnosis. What it exposes is public Open-Meteo data for
+arbitrary coordinates from a free, keyless API — nothing billable and no
+farm data — which is why leaving it open is an acceptable trade where
+doing the same for `/webhook/crop-diagnosis` would not be. The
+farmer-facing `/webhook/weather` and `/webhook/crop-diagnosis` both stay
+JWT-protected and are unaffected.
 
 ## Crop Diagnosis Agent (Phase 2)
 

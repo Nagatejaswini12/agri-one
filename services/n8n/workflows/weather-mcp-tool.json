@@ -1,0 +1,64 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "d7eaa68e-8879-4dae-b5eb-cbafbabaffe3"
+      },
+      "id": "bbbaae2e-432d-4fba-9e34-292c5ee8449e",
+      "name": "MCP Server Trigger",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Fetch current weather and a 3-day forecast for a farm using its latitude and longitude.",
+        "url": "https://somavarapunagatejaswini12.app.n8n.cloud/webhook/weather-mcp",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $fromAI('latitude', 'Farm latitude in decimal degrees', 'string') }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $fromAI('longitude', 'Farm longitude in decimal degrees', 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "40c81640-d4c9-451e-86d8-0adb7f8303de",
+      "name": "get_weather",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        288,
+        400
+      ],
+      "notes": "Calls the Weather MCP Bridge, which forwards to Weather - Core. httpRequestTool derives the tool schema from these $fromAI calls, so an MCP client sees separate latitude and longitude parameters - a Call n8n Workflow Tool exposes only a single \"input\" string and cannot receive structured coordinates. The farmer-facing /webhook/weather stays JWT-protected; the bridge is separate and serves public weather only."
+    }
+  ],
+  "connections": {
+    "get_weather": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

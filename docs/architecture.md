@@ -195,8 +195,12 @@ farm context to run against.
   `POST /webhook/weather` path, verifying the farmer's Supabase JWT
   before Core runs — so an unauthenticated request never reaches
   Open-Meteo. Both exported under `services/n8n/workflows/`. The
-  `get_weather` MCP tool now calls Core directly rather than a webhook
-  that ignored its arguments.
+  `get_weather` MCP tool reaches Core through a separate, deliberately
+  minimal `Weather MCP Bridge` webhook — an MCP client cannot obtain a
+  Supabase JWT, and that bridge can do nothing but forward coordinates
+  for public weather. See `services/n8n/README.md` for why it is left
+  unauthenticated and why the same would not be acceptable for Crop
+  Diagnosis.
 - **WMO codes, not text.** The agent returns numeric weather codes and
   stable advisory keys; the frontend maps both through i18n. This keeps
   conditions readable in Tamil/Telugu/Hindi instead of English arriving
