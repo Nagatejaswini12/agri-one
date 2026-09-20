@@ -50,7 +50,6 @@
     {
       "parameters": {
         "operation": "resize",
-        "dataPropertyName": "data",
         "width": 1024,
         "height": 1024,
         "resizeOption": "onlyIfLarger",
@@ -61,7 +60,7 @@
       "type": "n8n-nodes-base.editImage",
       "typeVersion": 1,
       "position": [
-        -380,
+        -384,
         256
       ],
       "notes": "Farmer phone photos are several MB. n8n switches the HTTP Request node into streaming mode for large request bodies, which makes it return an unparsed stream instead of Roboflow JSON. Capping the longest side at 1024px keeps the base64 body small enough to avoid that, and Roboflow downscales its input anyway."
@@ -69,7 +68,6 @@
     {
       "parameters": {
         "operation": "binaryToPropery",
-        "binaryPropertyName": "data",
         "destinationKey": "imageBase64",
         "options": {}
       },
@@ -78,7 +76,7 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
       "position": [
-        -60,
+        -64,
         256
       ],
       "notes": "n8n stores binary on the filesystem, so {{ $binary.data.data }} yields a storage marker, not base64 — Roboflow rejected that as \"Empty image payload\". This node reads the stored bytes and puts real base64 into json.imageBase64 for the request body."
@@ -90,7 +88,6 @@
         "binaryPropertyName": "imageBase64File",
         "options": {
           "encoding": "utf8",
-          "mimeType": "application/x-www-form-urlencoded",
           "fileName": "image.b64"
         }
       },
@@ -114,24 +111,24 @@
         "queryParameters": {
           "parameters": [
             {
-              "name": " api_key",
-              "value": "SET_IN_N8N_CREDENTIAL"
+              "name": "image",
+              "value": "={{ $('Core Trigger').first().json.imageUrl }}\n"
             }
           ]
         },
         "sendBody": true,
         "contentType": "binaryData",
+        "inputDataFieldName": "imageBase64File",
         "options": {
-          "timeout": 30000,
           "response": {
             "response": {
               "fullResponse": true,
               "neverError": true,
               "responseFormat": "json"
             }
-          }
-        },
-        "inputDataFieldName": "imageBase64File"
+          },
+          "timeout": 30000
+        }
       },
       "id": "c7076fd9-39b6-4805-8592-8c36dac578a7",
       "name": "Roboflow Detect",
