@@ -65,8 +65,7 @@ of the repo for consistency with how `.env` is handled.
 ### Core pipeline
 
 ```
-Core Trigger → Download Image → Resize Image → Image To Base64
-             → Base64 To File → Roboflow Detect → API Failed?
+Core Trigger → Download Image → Roboflow Detect → API Failed?
                                                   ├─ true  → Build Unavailable Result
                                                   └─ false → Map Diagnosis Result
 
@@ -81,20 +80,26 @@ prediction is below 0.4, two different classes are within 0.15 of each
 other, or the response is unusable. No treatment or prevention text is
 ever generated: `visualEvidence` and `careGuidance` stay empty.
 
-Three node choices are deliberate and easy to break by "simplifying":
+Two node choices are deliberate and easy to break by "simplifying":
 
-- **Resize Image** caps the longest side at 1024px. Phone photos are
-  several MB, and n8n streams large request bodies — after which it
-  hands back an unparsed stream object instead of Roboflow's JSON.
-- **Image To Base64 + Base64 To File** exist because Roboflow requires a
-  base64 *string*. Sending it as a raw body triggers the same streaming
-  problem, and sending the image as binary makes Roboflow reject it
-  ("contains raw bytes instead of a base64-encoded string"). Wrapping the
-  base64 text as a binary property uses the HTTP node's binary-upload
-  path, which parses the response correctly.
+- **The image is passed to Roboflow by URL**, via the `image` query
+  parameter, and Roboflow fetches it itself. There is no request body.
+  An earlier version uploaded the bytes instead (resize → base64 →
+  binary), but once the `image` parameter was added Roboflow used the URL
+  and ignored the upload — execution logs showed it analysing the
+  original full-size image while the uploaded copy was capped at 1024px.
+  Those three nodes were removed as dead work.
+  - Consequence: Roboflow must be able to reach the URL. Supabase signed
+    URLs work (query string and all). Some hosts that block automated
+    fetchers — Wikimedia is one — return
+    `"Data pointed by URL could not be decoded into image"`, which
+    surfaces as a normal `status: "unavailable"`. Worth knowing when
+    testing with arbitrary internet images rather than real uploads.
 - **Download Image has `onError: continueErrorOutput`** wired to
   `Build Unavailable Result`, so an unreachable image URL produces a
-  `status: "unavailable"` payload instead of an HTTP 500.
+  `status: "unavailable"` payload instead of an HTTP 500. It stays in the
+  flow as a reachability check even though Roboflow fetches the image
+  itself.
 
 ### Credentials
 

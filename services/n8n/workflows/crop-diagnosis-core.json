@@ -49,60 +49,6 @@
     },
     {
       "parameters": {
-        "operation": "resize",
-        "width": 1024,
-        "height": 1024,
-        "resizeOption": "onlyIfLarger",
-        "options": {}
-      },
-      "id": "303cf84c-ad6a-4570-9e41-dfe3ebacda35",
-      "name": "Resize Image",
-      "type": "n8n-nodes-base.editImage",
-      "typeVersion": 1,
-      "position": [
-        -384,
-        256
-      ],
-      "notes": "Farmer phone photos are several MB. n8n switches the HTTP Request node into streaming mode for large request bodies, which makes it return an unparsed stream instead of Roboflow JSON. Capping the longest side at 1024px keeps the base64 body small enough to avoid that, and Roboflow downscales its input anyway."
-    },
-    {
-      "parameters": {
-        "operation": "binaryToPropery",
-        "destinationKey": "imageBase64",
-        "options": {}
-      },
-      "id": "2371a68a-ac52-44a8-805a-94de1b55a99f",
-      "name": "Image To Base64",
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1,
-      "position": [
-        -64,
-        256
-      ],
-      "notes": "n8n stores binary on the filesystem, so {{ $binary.data.data }} yields a storage marker, not base64 — Roboflow rejected that as \"Empty image payload\". This node reads the stored bytes and puts real base64 into json.imageBase64 for the request body."
-    },
-    {
-      "parameters": {
-        "operation": "toText",
-        "sourceProperty": "imageBase64",
-        "binaryPropertyName": "imageBase64File",
-        "options": {
-          "encoding": "utf8",
-          "fileName": "image.b64"
-        }
-      },
-      "id": "d71102d7-2d82-4d04-9cd0-c704ea9f100e",
-      "name": "Base64 To File",
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        80,
-        256
-      ],
-      "notes": "Roboflow needs the image as a base64 STRING. Sending it as a raw body makes n8n stream the request, and it then returns an unparsed stream object instead of JSON. Wrapping the base64 text as a binary property lets the HTTP node use its binary-upload path, which parses the response correctly while Roboflow still receives base64 text."
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "https://serverless.roboflow.com/crop-disease-axhjj/1",
         "authentication": "genericCredentialType",
@@ -116,9 +62,6 @@
             }
           ]
         },
-        "sendBody": true,
-        "contentType": "binaryData",
-        "inputDataFieldName": "imageBase64File",
         "options": {
           "response": {
             "response": {
@@ -135,8 +78,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        160,
-        256
+        -480,
+        128
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -239,7 +182,7 @@
       "main": [
         [
           {
-            "node": "Resize Image",
+            "node": "Roboflow Detect",
             "type": "main",
             "index": 0
           }
@@ -258,39 +201,6 @@
         [
           {
             "node": "API Failed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Resize Image": {
-      "main": [
-        [
-          {
-            "node": "Image To Base64",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Image To Base64": {
-      "main": [
-        [
-          {
-            "node": "Base64 To File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Base64 To File": {
-      "main": [
-        [
-          {
-            "node": "Roboflow Detect",
             "type": "main",
             "index": 0
           }
