@@ -163,5 +163,11 @@
     "soilSummary": "Soil",
     "viewSoil": "View soil data",
     "agentsComingSoon": "Weather, market, pest and scheme guidance will appear here once those agents are connected in a later phase."
+  },
+  "scanHistory": {
+    "empty": "No scans yet for this farm.",
+    "loadError": "Couldn't load your scan history. Please try again.",
+    "noResult": "No diagnosis was saved for this scan.",
+    "unknownCrop": "Unknown crop"
   }
 }
