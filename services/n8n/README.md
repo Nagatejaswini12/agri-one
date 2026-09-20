@@ -20,7 +20,7 @@ Live in n8n Cloud as two workflows:
 | Workflow | ID | Role |
 |---|---|---|
 | `Crop Diagnosis - Core` | `AOURgRfTVM9bsGzV` | The logic. Exported here as `crop-diagnosis-core.json`. |
-| `Crop Diagnosis API` | `FPR9ZKAIO6ql9E8v` | Public `POST /webhook/crop-diagnosis`. Calls Core, responds to the webhook. Not exported here — MCP access is disabled on it, so it can't be read programmatically. |
+| `Crop Diagnosis API` | `FPR9ZKAIO6ql9E8v` | Public `POST /webhook/crop-diagnosis`. Verifies the caller's Supabase JWT, then calls Core and responds. Exported as `crop-diagnosis-api.json`. |
 
 The frontend calls the API workflow through
 `callAgentWebhook("crop-diagnosis", …)` with `{ imageUrl, cropName, locale }`,
@@ -28,6 +28,39 @@ where `imageUrl` is a 120-second Supabase signed URL. Core never touches
 Supabase — the frontend persists the `scans` row itself (see
 `docs/architecture.md`), so n8n holds no Storage or DB credential for
 this feature.
+
+### Authentication
+
+`/webhook/crop-diagnosis` is a public URL, so the API workflow verifies the
+caller before doing any work:
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        └────────────────→ Call Core → Respond
+```
+
+`Verify Supabase Token` does `GET {SUPABASE_URL}/auth/v1/user`, sending the
+**publishable anon key** as `apikey` plus the caller's `Authorization`
+header forwarded verbatim. Supabase checks the signature, expiry and
+whether the session is still valid, so n8n needs no service-role key and
+no JWT signing secret. A missing header sends no token and Supabase
+returns 401, so one check covers both missing and invalid credentials.
+
+The rejection happens *before* `Call Core`, so an unauthenticated request
+never reaches Roboflow. `neverError` is on so a 401/403 stays on the
+node's normal output for the IF to route, rather than failing the run.
+
+The frontend already forwards the token — `callAgentWebhook()` in
+`apps/web/src/lib/n8nClient.ts` attaches `Authorization: Bearer
+<supabase access_token>` on every call.
+
+Note this authenticates *a* signed-in user, not ownership of a specific
+farm: the payload is `{imageUrl, cropName, locale}` with no `farmId`.
+
+In the exported JSON the anon key is replaced with `SET_IN_N8N_UI`. It is
+a publishable key (it ships in the frontend bundle), but it is kept out
+of the repo for consistency with how `.env` is handled.
 
 ### Core pipeline
 
