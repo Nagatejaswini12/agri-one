@@ -1,0 +1,211 @@
+{
+  "name": "Weather API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "weather",
+        "responseMode": "responseNode"
+      },
+      "id": "5a806c0e-3068-467d-b71d-60e0fa8e1e92",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://czswdbfgfjteajfvwyid.supabase.co/auth/v1/user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SET_IN_N8N_UI"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headers.authorization }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "47636711-d49c-4870-b217-d4e52e863a5f",
+      "name": "Verify Supabase Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "weather-auth-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "24dacadc-cc40-49d1-9ad5-06031744d9f7",
+      "name": "Authenticated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"unavailable\", reason: \"Authentication required.\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "b14982f6-6895-4ee8-b616-60dbbc20ecd9",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        660,
+        -160
+      ],
+      "notes": "Terminates before Call Core, so an unauthenticated caller never reaches Weather - Core and Open-Meteo is never queried."
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "KmugUDlkzrUu0lBw",
+          "mode": "list",
+          "cachedResultName": "Weather - Core",
+          "cachedResultUrl": "/workflow/KmugUDlkzrUu0lBw"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "latitude": "={{ $('Webhook').first().json.body.latitude }}",
+            "longitude": "={{ $('Webhook').first().json.body.longitude }}",
+            "locale": "={{ $('Webhook').first().json.body.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "425996a3-0381-4ed3-8b1e-fdbe4183a16d",
+      "name": "Call 'Weather - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        660,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "0b517983-3ce1-4471-9f7e-a91620f3423f",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Supabase Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticated?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Weather - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Supabase Token": {
+      "main": [
+        [
+          {
+            "node": "Authenticated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Weather - Core'": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

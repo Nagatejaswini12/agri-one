@@ -1,0 +1,196 @@
+{
+  "name": "Weather - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "latitude"
+            },
+            {
+              "name": "longitude"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "1b0041ab-443a-4ab2-858f-db4c0466a5e4",
+      "name": "Core Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $json.latitude }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $json.longitude }}"
+            },
+            {
+              "name": "current",
+              "value": "temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m"
+            },
+            {
+              "name": "daily",
+              "value": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
+            },
+            {
+              "name": "forecast_days",
+              "value": "3"
+            },
+            {
+              "name": "timezone",
+              "value": "auto"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "e0313e3f-db67-4958-8bd1-870b1b8fec28",
+      "name": "Fetch Open-Meteo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "openmeteo-http-failed",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 400,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "acc154a9-c7b4-4378-8c2d-c4f6bf1918b8",
+      "name": "API Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Open-Meteo failed or was unreachable. The farmer gets a plain message;\n// the technical detail goes to the n8n execution log so failures stay\n// diagnosable without exposing the provider or HTTP internals in the UI.\nconst statusCode = $json.statusCode ?? \"unknown\";\nlet body = $json.body ?? {};\nif (typeof body === \"string\") {\n  try { body = JSON.parse(body); } catch { body = { reason: body }; }\n}\nconst detail = body?.reason ?? body?.error ?? $json.error?.message ?? \"No error message returned.\";\nconsole.log(\"Open-Meteo failure detail:\", statusCode, detail);\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      reason: \"The weather service is currently unavailable. Please try again.\"\n    }\n  }\n];\n"
+      },
+      "id": "91eb1597-0eed-4945-b355-c60544835bc6",
+      "name": "Build Unavailable Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Maps Open-Meteo's forecast response into the WeatherSnapshot contract\n// (packages/shared-types). Every number is passed through exactly as the\n// source reported it — nothing is smoothed, rounded or filled in. A value\n// the source omitted becomes null rather than a plausible-looking guess.\n//\n// Conditions stay as numeric WMO codes on purpose: the frontend maps them\n// to translated labels, so a Tamil/Telugu/Hindi farmer reads the condition\n// in their own language instead of English text pasted in from here.\n\nconst SOURCE = \"open-meteo\";\nconst THUNDERSTORM_CODES = [95, 96, 99];\n\n// Threshold constants for the advisory flags. These are statements of what\n// the forecast says, never recommendations — no treatment or chemical\n// guidance is produced anywhere in this workflow.\nconst RAIN_TODAY_PROBABILITY_PCT = 60;\nconst HEAVY_RAIN_PROBABILITY_PCT = 70;\nconst HEAVY_RAIN_SUM_MM = 10;\nconst HIGH_WIND_KPH = 30;\nconst EXTREME_HEAT_C = 40;\nconst DRY_DAY_SUM_MM = 1;\n\nconst input = $input.first()?.json ?? {};\nlet body = input.body ?? input;\nif (typeof body === \"string\") {\n  try { body = JSON.parse(body); } catch { body = {}; }\n}\n\nconst num = (v) => (typeof v === \"number\" && Number.isFinite(v) ? v : null);\nconst at = (arr, i) => (Array.isArray(arr) ? num(arr[i]) : null);\n\nconst current = body.current ?? {};\nconst daily = body.daily ?? {};\nconst days = Array.isArray(daily.time) ? daily.time : [];\n\nconst forecast = [];\nfor (let i = 0; i < days.length && i < 3; i++) {\n  if (typeof days[i] !== \"string\") continue;\n  forecast.push({\n    date: days[i],\n    weatherCode: at(daily.weather_code, i),\n    temperatureMaxC: at(daily.temperature_2m_max, i),\n    temperatureMinC: at(daily.temperature_2m_min, i),\n    precipitationSumMm: at(daily.precipitation_sum, i),\n    precipitationProbabilityMaxPct: at(daily.precipitation_probability_max, i)\n  });\n}\n\nconst observedAt = typeof current.time === \"string\" ? current.time : null;\n\n// A 200 with nothing usable in it is still no weather data. Say so rather\n// than render an empty card as though it were a reading.\nif (!observedAt && forecast.length === 0) {\n  console.log(\"Open-Meteo returned no usable current or daily data\");\n  return [{ json: { status: \"unavailable\", reason: \"The weather service returned no data for this location.\" } }];\n}\n\nconst advisories = [];\nconst currentCode = num(current.weather_code);\nconst currentWind = num(current.wind_speed_10m);\n\nconst todayProbability = forecast.length > 0 ? forecast[0].precipitationProbabilityMaxPct : null;\nif (todayProbability !== null && todayProbability >= RAIN_TODAY_PROBABILITY_PCT) {\n  advisories.push(\"rain_expected_today\");\n}\n\nlet heavyRain = false;\nlet thunderstorm = currentCode !== null && THUNDERSTORM_CODES.includes(currentCode);\nlet extremeHeat = false;\n// Only claim a dry spell when every day actually reported a figure.\nlet dryRun = forecast.length > 0;\n\nfor (const day of forecast) {\n  if (\n    day.precipitationProbabilityMaxPct !== null &&\n    day.precipitationProbabilityMaxPct >= HEAVY_RAIN_PROBABILITY_PCT &&\n    day.precipitationSumMm !== null &&\n    day.precipitationSumMm >= HEAVY_RAIN_SUM_MM\n  ) heavyRain = true;\n  if (day.weatherCode !== null && THUNDERSTORM_CODES.includes(day.weatherCode)) thunderstorm = true;\n  if (day.temperatureMaxC !== null && day.temperatureMaxC >= EXTREME_HEAT_C) extremeHeat = true;\n  if (!(day.precipitationSumMm !== null && day.precipitationSumMm < DRY_DAY_SUM_MM)) dryRun = false;\n}\n\nif (heavyRain) advisories.push(\"heavy_rain_expected\");\nif (thunderstorm) advisories.push(\"thunderstorm_expected\");\nif (currentWind !== null && currentWind >= HIGH_WIND_KPH) advisories.push(\"high_wind\");\nif (extremeHeat) advisories.push(\"extreme_heat\");\nif (dryRun) advisories.push(\"no_rain_next_3_days\");\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: SOURCE,\n      data: {\n        latitude: num(body.latitude),\n        longitude: num(body.longitude),\n        timezone: typeof body.timezone === \"string\" ? body.timezone : null,\n        current: {\n          observedAt,\n          temperatureC: num(current.temperature_2m),\n          relativeHumidityPct: num(current.relative_humidity_2m),\n          precipitationMm: num(current.precipitation),\n          windSpeedKph: currentWind,\n          weatherCode: currentCode\n        },\n        forecast,\n        advisories\n      }\n    }\n  }\n];\n"
+      },
+      "id": "34f52d4a-af34-421a-a076-cde946a3e174",
+      "name": "Map Weather Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        100
+      ],
+      "notes": "Open-Meteo numbers pass through unchanged; a missing value becomes null, never a guess. Conditions stay as numeric WMO codes so the frontend can translate them. Advisory flags are threshold-derived statements of fact - no treatment or chemical guidance is produced here."
+    }
+  ],
+  "connections": {
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Open-Meteo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Open-Meteo": {
+      "main": [
+        [
+          {
+            "node": "API Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Failed?": {
+      "main": [
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Weather Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

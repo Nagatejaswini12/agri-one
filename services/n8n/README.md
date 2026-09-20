@@ -9,9 +9,68 @@
    so they're versioned alongside the app, not only stored inside n8n.
 
 No Orchestrator exists yet — this folder started as scaffolding only
-(Phase 0). The Weather Agent is live directly against a farm's
-lat/long, exposed as the `get_weather` tool in an existing MCP Server
-workflow that isn't versioned here yet.
+(Phase 0).
+
+## Weather Agent (Phase 3)
+
+| Workflow | ID | Role |
+|---|---|---|
+| `Weather - Core` | `KmugUDlkzrUu0lBw` | Calls Open-Meteo, maps to `WeatherSnapshot`. Exported as `weather-core.json`. |
+| `Weather API` | `HWWa4cQLD1CscuPj` | Public `POST /webhook/weather`. Verifies the Supabase JWT, then calls Core. Exported as `weather-api.json`. |
+| `My workflow 2` | `vHf5eRZPtpHHmV1K` | MCP Server Trigger exposing the `get_weather` tool, now pointed at Core. |
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        ▼
+                              Call 'Weather - Core'
+                                        │
+Core Trigger → Fetch Open-Meteo → API Failed? ─ true ──→ Build Unavailable Result
+   (lat, long, locale)   │              └ false ───────→ Map Weather Result
+                         └─ error output ─────────────→ Build Unavailable Result
+```
+
+**Coordinates come from the request, never from the workflow.** The
+frontend sends the farm's own `farms.latitude/longitude`; a farm without
+a location is never sent to the agent at all (the page shows an empty
+state instead). The workflow this replaced had `13.0827, 80.2707`
+hardcoded, so every farm got Chennai's weather.
+
+Source: Open-Meteo — no API key, which is why it was chosen over
+OpenWeatherMap. `OPENWEATHERMAP_API_KEY` in `.env.example` stays unused.
+Requested fields are current conditions plus a 3-day daily forecast, with
+`timezone=auto` so readings are in the farm's local time.
+
+`Map Weather Result` passes every number through exactly as Open-Meteo
+reported it; a value the source omitted becomes `null`, never a
+substituted default. Conditions stay as **numeric WMO codes** so the
+frontend can render them through i18n — a Tamil, Telugu or Hindi farmer
+reads the condition in their own language instead of English pasted in
+from n8n.
+
+Advisory flags (`rain_expected_today`, `heavy_rain_expected`,
+`thunderstorm_expected`, `high_wind`, `extreme_heat`,
+`no_rain_next_3_days`) are threshold-derived statements of what the
+forecast says. They are **not** recommendations, and no treatment or
+chemical guidance is produced anywhere in this workflow. Thresholds live
+at the top of the `Map Weather Result` code node.
+
+Nothing is persisted — weather is read live on each view, so there is no
+Supabase table and no migration behind this feature.
+
+### `get_weather` (MCP)
+
+The tool calls `Weather - Core` directly through a **Call n8n Workflow
+Tool** node rather than over HTTP, because the Weather API webhook
+requires a Supabase JWT that an MCP client does not have. This also fixed
+two defects in the previous version: it ignored the coordinates it was
+given, and its second parameter was mis-named `"=longitude"`.
+
+Note the parameter shape changed as a side effect: `toolWorkflow`
+presents a single `input` string to the caller and relies on `$fromAI` to
+extract values, so an agent-driven call works while a direct MCP call
+with raw `latitude`/`longitude` arguments does not populate them. The
+previous `httpRequestTool` declared both parameters explicitly.
 
 ## Crop Diagnosis Agent (Phase 2)
 

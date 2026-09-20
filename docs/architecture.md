@@ -178,6 +178,41 @@ farm context to run against.
   so a contract drift degrades to an honest state instead of crashing
   the page. It never fills in content the agent didn't send.
 
+## Phase 3 — Weather Agent
+
+- **Provider**: Open-Meteo, no API key. Current conditions plus a 3-day
+  daily forecast, requested with `timezone=auto` so readings are in the
+  farm's local time.
+- **Coordinates are the farm's own.** `useWeather(farm)` sends
+  `farms.latitude/longitude` (captured by `FarmForm`'s "use current
+  location"). A farm with no saved location never reaches the agent —
+  the page shows an `EmptyState` linking to Farm detail, because
+  substituting any other coordinate would mean presenting a different
+  place's weather as this farm's. The prototype workflow this replaced
+  had Chennai hardcoded and returned it for every farm.
+- **n8n**: `Weather - Core` (`KmugUDlkzrUu0lBw`) calls Open-Meteo and
+  maps the response; `Weather API` (`HWWa4cQLD1CscuPj`) is the
+  `POST /webhook/weather` path, verifying the farmer's Supabase JWT
+  before Core runs — so an unauthenticated request never reaches
+  Open-Meteo. Both exported under `services/n8n/workflows/`. The
+  `get_weather` MCP tool now calls Core directly rather than a webhook
+  that ignored its arguments.
+- **WMO codes, not text.** The agent returns numeric weather codes and
+  stable advisory keys; the frontend maps both through i18n. This keeps
+  conditions readable in Tamil/Telugu/Hindi instead of English arriving
+  from n8n — the gap the Crop Diagnosis disclaimer still has.
+- **Advisory flags are descriptive, not prescriptive.** Six
+  threshold-derived flags state what the forecast shows (heavy rain,
+  thunderstorms, high wind, extreme heat, a dry spell). They carry no
+  treatment or chemical guidance, consistent with "Content rules" above,
+  and the UI labels them as forecast descriptions rather than advice.
+- **Missing values stay missing.** Any reading the source omitted is
+  `null` end to end and renders as a dash — never a substituted default.
+  `modules/weather/normalize.ts` enforces this at the boundary, the same
+  defensive pattern as `modules/scan-crop/normalize.ts`.
+- **No persistence, no migration.** Weather is read live on each view;
+  there is no `weather` table and nothing is written to Supabase.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.

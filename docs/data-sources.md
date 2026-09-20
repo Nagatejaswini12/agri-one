@@ -5,7 +5,7 @@ fails, the module must return/render an "unavailable" state.
 
 | Module | Source | Notes |
 |---|---|---|
-| Weather | Open-Meteo (default, no key) or OpenWeatherMap (keyed) | IMD data used if/when freely accessible; "current" means the source's latest reading, not guaranteed real-time. |
+| Weather | **Open-Meteo** (live, no key) | Queried with the farm's own `farms.latitude/longitude` — never a default location. Current conditions + 3-day forecast, `timezone=auto`. "Current" means the source's latest reading, not a guaranteed real-time observation. Chosen over OpenWeatherMap because it needs no credential; `OPENWEATHERMAP_API_KEY` stays unused. IMD if/when freely accessible. |
 | Market | AGMARKNET via data.gov.in | Requires a free data.gov.in API key. Publishes with lag (often 1+ day) — UI must show the as-of date, current-price only, no trend charts. |
 | Soil | Farmer-entered values / Soil Health Card upload | No public API; this is inherently real because it's farmer-provided. |
 | Pest | Pest/disease knowledge base + regional advisories where available | Falls back to general seasonal guidance, clearly labeled as such if no live regional alert exists. |

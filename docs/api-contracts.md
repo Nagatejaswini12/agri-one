@@ -2,9 +2,7 @@
 
 There is no custom backend — the frontend talks directly to Supabase and
 directly to n8n webhooks (see `docs/architecture.md`). This file tracks
-those two contract surfaces as they're built. Nothing is implemented yet
-(Phase 0 was scaffolding only); the first real contract is the Weather
-Agent webhook, built per the report's step-by-step order.
+those two contract surfaces as they're built.
 
 ## Conventions
 
@@ -16,7 +14,7 @@ Agent webhook, built per the report's step-by-step order.
   ```
 - Every webhook call carries `Authorization: Bearer <supabase-jwt>`
   (see `apps/web/src/lib/n8nClient.ts`); the workflow verifies it before
-  touching any farm-specific data.
+  touching any farm-specific data or calling an external provider.
 - Supabase access is scoped by row-level security policies keyed to
   `auth.uid()` — every table a farmer can read/write must have a policy
   restricting rows to their own `farmer_id` (directly, or via the
@@ -24,14 +22,42 @@ Agent webhook, built per the report's step-by-step order.
 
 ## Currently implemented
 
-Nothing yet.
+### `POST /webhook/crop-diagnosis`
+
+Request `{ imageUrl, cropName, locale }`, where `imageUrl` is a
+short-lived Supabase signed URL. Responds with
+`DataResult<CropDiagnosisResult>`.
+
+Unauthenticated calls return HTTP 401 and never reach the vision model.
+The result carries no pesticide or chemical field; insufficient evidence
+returns `category: "inconclusive"` rather than a forced label.
+
+### `POST /webhook/weather`
+
+Request `{ latitude, longitude, locale }` — the farm's own coordinates,
+read from `farms.latitude/longitude`. Responds with
+`DataResult<WeatherSnapshot>`.
+
+Unauthenticated calls return HTTP 401 and never reach Open-Meteo. A farm
+with no saved location is never sent at all: the page shows an empty
+state, because substituting any other coordinate would mean showing a
+different place's weather as if it were this farm's.
+
+Two contract details worth stating explicitly:
+
+- Conditions are returned as **numeric WMO codes**, not text, so the
+  frontend renders them through i18n in the farmer's own language.
+- `advisories` is a list of stable threshold-derived keys describing what
+  the forecast says (for example `heavy_rain_expected`). They are
+  descriptions, never recommendations, and carry no treatment or chemical
+  guidance.
+
+Nothing from this endpoint is persisted — weather is read live per view.
 
 ## Planned, in build order
 
-1. `POST /webhook/weather` — Weather Agent (first live-data vertical)
-2. `POST /webhook/crop-diagnosis` — Crop Diagnosis Agent
-3. `POST /webhook/soil` — Soil Agent
-4. `POST /webhook/market` — Market Agent
-5. `POST /webhook/schemes` — Government Scheme Agent
-6. `POST /webhook/orchestrator` — Orchestrator (fronts Decision Agent +
+1. `POST /webhook/soil` — Soil Agent
+2. `POST /webhook/market` — Market Agent
+3. `POST /webhook/schemes` — Government Scheme Agent
+4. `POST /webhook/orchestrator` — Orchestrator (fronts Decision Agent +
    Language/Voice Service once the above are individually proven)

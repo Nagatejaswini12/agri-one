@@ -168,6 +168,64 @@ export interface YieldRecord {
 }
 
 /**
+ * Threshold-derived statements about what the forecast says — never
+ * recommendations. The Weather Agent emits stable keys rather than prose
+ * so the frontend renders them in the farmer's own language, and so no
+ * treatment or chemical guidance can leak in from the agent side.
+ */
+export type WeatherAdvisoryFlag =
+  | "rain_expected_today"
+  | "heavy_rain_expected"
+  | "thunderstorm_expected"
+  | "high_wind"
+  | "extreme_heat"
+  | "no_rain_next_3_days";
+
+/**
+ * A value the source didn't report is `null` — never a substituted
+ * default, per the no-fabricated-data rule in docs/architecture.md.
+ * `weatherCode` is the raw WMO code; the frontend maps it to a
+ * translated label (`weather.wmo.<code>`) so conditions aren't
+ * English-only.
+ */
+export interface WeatherCurrent {
+  /** Local time at the farm, as the source reported it. */
+  observedAt: string | null;
+  temperatureC: number | null;
+  relativeHumidityPct: number | null;
+  precipitationMm: number | null;
+  windSpeedKph: number | null;
+  weatherCode: number | null;
+}
+
+export interface WeatherForecastDay {
+  /** YYYY-MM-DD in the farm's local timezone. */
+  date: string;
+  weatherCode: number | null;
+  temperatureMaxC: number | null;
+  temperatureMinC: number | null;
+  precipitationSumMm: number | null;
+  precipitationProbabilityMaxPct: number | null;
+}
+
+/**
+ * The Weather Agent's payload, keyed to a farm's own coordinates — the
+ * frontend sends `farms.latitude/longitude`, so no location is ever
+ * assumed or hardcoded. Nothing here is persisted: weather is read live
+ * on each view.
+ */
+export interface WeatherSnapshot {
+  latitude: number | null;
+  longitude: number | null;
+  /** IANA zone the readings are expressed in, e.g. "Asia/Kolkata". */
+  timezone: string | null;
+  current: WeatherCurrent;
+  /** Up to three days, starting today. */
+  forecast: WeatherForecastDay[];
+  advisories: WeatherAdvisoryFlag[];
+}
+
+/**
  * Every live-data module response must be one of these two shapes —
  * never a silently-defaulted value when a source is unavailable.
  */
