@@ -10,6 +10,9 @@ npm-debug.log*
 .env.local
 .env.*.local
 
+# local test-farmer sign-in used by the authenticated end-to-end checks
+.test-account.json
+
 # editor
 .vscode/*
 !.vscode/extensions.json

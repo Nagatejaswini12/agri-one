@@ -225,5 +225,27 @@
       "99": "Thunderstorm with heavy hail",
       "unknown": "Condition not reported"
     }
+  },
+  "market": {
+    "selectCrop": "Crop",
+    "noFarm": "Add a farm first to see market prices.",
+    "noLocation": "This farm has no state and district saved. Market prices are looked up by district.",
+    "setLocation": "Set farm location",
+    "noCrops": "Add a crop to this farm to look up its market price.",
+    "addCrop": "Add a crop",
+    "loadError": "Couldn't reach the market price service. Please try again.",
+    "location": "{{district}}, {{state}}",
+    "reportedOn": "Prices reported on {{date}}",
+    "reportedOnUnknown": "The source did not give a report date",
+    "fetchedAt": "checked at {{time}}",
+    "sourceNote": "Source: {{source}}",
+    "priceUnit": "₹ per quintal",
+    "mandis": "Mandis reporting ({{n}})",
+    "min": "Min",
+    "max": "Max",
+    "modal": "Modal price",
+    "variety": "Variety",
+    "grade": "Grade",
+    "snapshotNote": "This is the latest daily snapshot from the source. Price history is not available."
   }
 }

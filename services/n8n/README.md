@@ -93,6 +93,91 @@ doing the same for `/webhook/crop-diagnosis` would not be. The
 farmer-facing `/webhook/weather` and `/webhook/crop-diagnosis` both stay
 JWT-protected and are unaffected.
 
+## Market Agent (Phase 4)
+
+| Workflow | ID | Role |
+|---|---|---|
+| `Market - Core` | `9Yyz0Lawme5tXIYT` | Resolves the district, queries AGMARKNET, maps to `MarketSnapshot`. Exported as `market-core.json`. |
+| `Market API` | `GeUoAx2HqiBqXKJv` | Public `POST /webhook/market`. Verifies the Supabase JWT, then calls Core. Exported as `market-api.json`. |
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        ▼
+                               Call 'Market - Core'
+
+Core Trigger → Resolve Location → Resolved? ─ false ──→ Build Unresolved Result
+ (state, district,                    │ true
+  commodity, locale)                  ▼
+                            Fetch AGMARKNET → API Failed? ─ true ──→ Build Unavailable Result
+                                    │               └ false ───────→ Map Market Result
+                                    └─ error output ───────────────→ Build Unavailable Result
+```
+
+Source: AGMARKNET's daily mandi-price resource via data.gov.in
+(`9ef84268-d588-465a-a308-a864a43d0070`). The free data.gov.in key is the
+n8n Credential `oHR7Vr7vQQqNhwXR` ("Query Auth account", HTTP Query
+Auth) — `DATA_GOV_IN_API_KEY` in `.env.example` stays unused, and the key
+is never in this repo.
+
+**District and crop come from the request, never from the workflow.** The
+frontend sends the farm's own `farms.state`/`farms.district` plus the
+selected `farm_crops.cropName`; a farm without a saved district is never
+sent to the agent at all (the page shows an empty state instead).
+
+### Refreshing `DISTRICT_MAP`
+
+`Resolve Location` holds AGMARKNET's own district values — 284 districts
+across 21 states, captured from a full snapshot, not hand-written. It
+lists the districts that *reported arrivals* in that snapshot, so it goes
+stale as AGMARKNET's coverage changes. To refresh: page the resource with
+no `filters[...]`, collect the distinct `state` + `district` pairs, and
+replace the literal in the code node. Leave the matching rule alone (see
+below) and re-run the collision check — the rule is only safe because it
+currently resolves all 284 districts with zero ambiguity.
+
+The rule: lowercase → letters only → drop `h` → drop vowels → collapse
+doubled consonants, matched **within the resolved state**. Indic
+transliteration varies almost entirely in vowels and aspirates, so the
+consonant skeleton is the stable part (`thiruvallur` and `Thiruvellore`
+both reduce to `trvlr`). This is exact resolution of one district under a
+different spelling, **not** fuzzy matching: a skeleton matching zero
+districts — or more than one — resolves to nothing and the caller gets
+`unavailable` naming the text that failed, so the farmer can correct
+their farm record. Guessing a neighbouring district would quote a
+different market's prices as if they were this farmer's.
+
+### Result mapping
+
+`Map Market Result` passes every price through exactly as AGMARKNET
+reported it; a field the source omitted becomes `null`, **never 0** — a
+zero-rupee price would read as "free". `arrival_date` is `DD/MM/YYYY`,
+parsed explicitly rather than handed to `Date()`, and returned as ISO
+`reportedOn`. Rows with no market name are dropped (they cannot be told
+apart in the UI); rows with an unreadable date are kept and sorted last,
+because the price is still real.
+
+A **200 with an empty `records` array** is how this API reports "nothing
+matched", so the count is checked explicitly — otherwise a normal "no
+arrivals today" would surface as a successful empty price table.
+
+Every reporting mandi is returned, not a single "best" price: a farmer
+compares mandis, and picking one for them would hide the spread. There is
+no history to return — the resource is a daily snapshot — which is why
+the UI shows no trend charts.
+
+Nothing is persisted: prices are read live on each view, so there is no
+Supabase table and no migration behind this feature.
+
+### Verified against the live instance
+
+Negative cases (2026-09-21), all returning HTTP 401
+`{"status":"unavailable","reason":"Authentication required."}`: no
+`Authorization` header, an invalid JWT, and the publishable anon key used
+as a user token. `Market - Core` recorded **zero** executions across all
+three — its latest execution id (192) predates the first rejection (193),
+confirming the false branch terminates before Core.
+
 ## Crop Diagnosis Agent (Phase 2)
 
 Live in n8n Cloud as two workflows:

@@ -217,6 +217,68 @@ farm context to run against.
 - **No persistence, no migration.** Weather is read live on each view;
   there is no `weather` table and nothing is written to Supabase.
 
+## Phase 4 — Market Agent
+
+- **Provider**: AGMARKNET's daily mandi-price resource via data.gov.in
+  (`9ef84268-d588-465a-a308-a864a43d0070`). The free data.gov.in key is
+  an n8n Credential (HTTP Query Auth), never in `.env` or this repo.
+- **District is the farm's own.** `useMarket(farm, commodity)` sends
+  `farms.state`/`farms.district` plus the `farm_crops.cropName` the
+  farmer picked. A farm with no saved district never reaches the agent —
+  the page shows an `EmptyState` linking to Farm detail, for the same
+  reason the Weather Agent refuses to guess coordinates: another
+  district's prices are a different market, not an approximation of this
+  one.
+- **Spelling is resolved, never guessed.** `Resolve Location` maps the
+  farmer's free text onto AGMARKNET's own district values (284 districts
+  across 21 states, captured from a full snapshot rather than
+  hand-written) using a consonant-skeleton match — Indic transliteration
+  varies almost entirely in vowels and aspirates, so `Thiruvallur` and
+  `Thiruvellore` reduce alike. It is exact resolution under a different
+  spelling, **not** fuzzy matching: a skeleton matching zero districts,
+  or more than one, resolves to nothing and the farmer is told which
+  district text failed, so they can fix the farm record. Matching is
+  scoped within the resolved state, so text can never resolve into a
+  different state. Refresh the map when AGMARKNET's district list changes
+  — see `services/n8n/README.md`.
+- **n8n**: `Market - Core` (`9Yyz0Lawme5tXIYT`) resolves the location,
+  queries AGMARKNET and maps the response; `Market API`
+  (`GeUoAx2HqiBqXKJv`) is the `POST /webhook/market` path, verifying the
+  farmer's Supabase JWT before Core runs. The `Authenticated?` false
+  branch terminates at `Respond Unauthorized` with no onward connection,
+  so an unauthenticated request cannot reach AGMARKNET — verified
+  against the live instance: three rejected calls produced three
+  `Market API` executions and zero `Market - Core` executions. Both
+  exported under `services/n8n/workflows/`.
+- **Current snapshot only.** The source publishes one snapshot per day
+  with no history behind it, so there is nothing to chart — which is
+  also what "Content rules" above already required of this module.
+- **The source's date is the headline.** `reportedOn` per quote and
+  `latestReportedOn` across them are AGMARKNET's own arrival dates
+  (`DD/MM/YYYY`, converted to ISO). The UI leads with that date and shows
+  `asOf` — when the request ran — separately, because "checked just now"
+  and "priced yesterday" are different facts and conflating them would
+  overstate how current the price is.
+- **Every mandi is shown.** A farmer compares mandis; returning a single
+  "best" price would hide the spread that makes the comparison worth
+  anything.
+- **Missing values stay missing.** A price the source omitted is `null`
+  end to end and renders as a dash — never 0, which would read as "sold
+  for nothing". A 200 with zero records is how this API says "nothing
+  matched", so it is checked explicitly and surfaced as unavailable
+  rather than as an empty table.
+  `modules/market/normalize.ts` enforces all of this at the boundary
+  (14 unit tests, `npm run test -w @agri-one/web`), the same defensive
+  pattern as the Weather and Crop Diagnosis normalizers.
+- **Verified end to end against the live source.**
+  `scripts/market-e2e.mjs` signs in as a local test farmer, calls the real
+  `POST /webhook/market`, and runs the live responses through the very
+  normalizer the UI uses — so it proves the live contract rather than a
+  fixture of it. It needs a gitignored `.test-account.json`
+  (`{ email, password }`) and prints no credentials.
+- **No persistence, no migration.** Prices are read live on each view;
+  there is no `market` table and nothing is written to Supabase.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.

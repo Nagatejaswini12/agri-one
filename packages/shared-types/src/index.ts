@@ -226,6 +226,50 @@ export interface WeatherSnapshot {
 }
 
 /**
+ * One mandi's reported prices for a commodity. Every price is exactly
+ * what the source reported; a field the source omitted is `null`, never
+ * 0 — a zero-rupee price would read as "free", which is worse than "not
+ * reported". The UI renders a `null` as a dash.
+ */
+export interface MarketPriceQuote {
+  /** Mandi (market yard) name, in the source's own spelling. */
+  market: string;
+  variety: string | null;
+  grade: string | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  /** The most commonly transacted price — what a farmer actually gets. */
+  modalPrice: number | null;
+  /** YYYY-MM-DD, converted from the source's DD/MM/YYYY arrival date. */
+  reportedOn: string | null;
+}
+
+/** AGMARKNET quotes rupees per quintal; no other unit is in use yet. */
+export type MarketPriceUnit = "INR_PER_QUINTAL";
+
+/**
+ * The Market Agent's payload — a current/latest snapshot only. The
+ * underlying AGMARKNET resource is a daily snapshot with no history
+ * behind it, which is why there are no trend charts (see
+ * docs/architecture.md "Content rules").
+ *
+ * `state`/`district` are AGMARKNET's own spellings, resolved from what
+ * the farmer saved on the farm; they can differ from the farmer's
+ * spelling, so the UI shows the resolved names rather than the typed
+ * ones.
+ */
+export interface MarketSnapshot {
+  commodity: string;
+  state: string;
+  district: string;
+  /** Newest date across `quotes`; null when none carried a readable one. */
+  latestReportedOn: string | null;
+  priceUnit: MarketPriceUnit;
+  /** Every mandi the source reported — never truncated to a "best" price. */
+  quotes: MarketPriceQuote[];
+}
+
+/**
  * Every live-data module response must be one of these two shapes —
  * never a silently-defaulted value when a source is unavailable.
  */

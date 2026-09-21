@@ -1,0 +1,293 @@
+{
+  "name": "Market - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "state"
+            },
+            {
+              "name": "district"
+            },
+            {
+              "name": "commodity"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "bd46a2d3-6e6d-4f4a-842d-55dae34c2114",
+      "name": "Core Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resolves the farmer's own free-text state/district onto AGMARKNET's exact\n// spellings. The farmer's record is never rewritten — this only decides what\n// to ask the API for.\n//\n// DISTRICT_MAP below is derived from AGMARKNET's own district values\n// (resource 9ef84268-d588-465a-a308-a864a43d0070), captured from a full\n// snapshot: 21 states, 284 districts. It is not a hand-written guess list.\n// It reflects the districts that reported arrivals in that snapshot, so it\n// needs refreshing when AGMARKNET's district list changes — see\n// services/n8n/README.md.\n//\n// Matching rule, validated against all 284 districts with zero collisions:\n// lowercase → letters only → drop \"h\" (aspirates) → drop vowels → collapse\n// doubled consonants. Indic transliteration varies almost entirely in vowels\n// and aspirates, so the consonant skeleton is the stable part. \"thiruvallur\"\n// and \"Thiruvellore\" both reduce to \"trvlr\".\n//\n// This is exact resolution of one district under a different spelling, not\n// fuzzy matching: a skeleton matching zero districts — or more than one —\n// resolves to nothing and the caller gets \"unavailable\". Matching is scoped\n// to the state, so the same text cannot resolve into a different state.\n\nconst DISTRICT_MAP = {\n  \"Andhra Pradesh\": [\"Alluri Sitharama Raju\",\"Anakapally\",\"Ananthapuramu\",\"Annamayya\",\"Bapatla\",\"Dr.B.R.A.Konaseema\",\"East Godavari\",\"Eluru\",\"Kakinada\",\"Markapuram\",\"NTR\",\"Nandyal\",\"Palnadu\",\"Prakasam\",\"SPSR Nellore\",\"Srikakulam\",\"Visakhapatnam\",\"YSR Kadapa\"],\n  \"Assam\": [\"Tinsukia\"],\n  \"Bihar\": [\"Begusarai\",\"Bhagalpur\",\"Buxar\",\"Chhapra\",\"Madhubani\",\"Sheikhpura\"],\n  \"Chattisgarh\": [\"Kanker\",\"Kondagaon\",\"Manendragarh Chirmiri Bhartpur\",\"Raipur\",\"Sarangarh Bilaigarh\",\"Surajpur\"],\n  \"Gujarat\": [\"Ahmedabad\",\"Amreli\",\"Narmada\",\"Rajkot\"],\n  \"Haryana\": [\"Faridabad\",\"Gurgaon\",\"Hissar\",\"Jind\",\"Kaithal\",\"Karnal\",\"Kurukshetra\",\"Mahendragarh-Narnaul\",\"Palwal\",\"Panipat\",\"Rewari\",\"Sirsa\",\"Sonipat\",\"Yamuna Nagar\"],\n  \"Himachal Pradesh\": [\"Kullu\",\"Mandi\",\"Solan\"],\n  \"Karnataka\": [\"Bengaluru South\",\"Bidar\",\"Chikkamagaluru\",\"Haveri\",\"Koppal\",\"Vijayanagara\"],\n  \"Keralam\": [\"Alappuzha\",\"Ernakulam\",\"Idukki\",\"Kollam\",\"Kottayam\",\"Kozhikode(Calicut)\",\"Malappuram\",\"Palakad\",\"Pathanamthitta\",\"Thirssur\",\"Thiruvananthapuram\"],\n  \"Madhya Pradesh\": [\"Agar Malwa\",\"Alirajpur\",\"Ashoknagar\",\"Badwani\",\"Balaghat\",\"Betul\",\"Bhind\",\"Bhopal\",\"Chhindwara\",\"Dewas\",\"Dhar\",\"Dindori\",\"Guna\",\"Gwalior\",\"Harda\",\"Indore\",\"Katni\",\"Khargone\",\"Mandla\",\"Mandsaur\",\"Morena\",\"Narmadapuram\",\"Narsinghpur\",\"Raisen\",\"Rajgarh\",\"Ratlam\",\"Rewa\",\"Sagar\",\"Satna\",\"Sehore\",\"Seoni\",\"Sidhi\",\"Tikamgarh\",\"Ujjain\"],\n  \"Maharashtra\": [\"Ahilyanagar\",\"Amarawati\",\"Chattrapati Sambhajinagar\",\"Dharashiv\",\"Gadchiroli\",\"Jalgaon\",\"Kolhapur\",\"Latur\",\"Nagpur\",\"Parbhani\",\"Pune\",\"Raigad\",\"Sangli\",\"Satara\",\"Solapur\"],\n  \"NCT of Delhi\": [\"Delhi\"],\n  \"Odisha\": [\"Angul\",\"Balasore\",\"Bargarh\",\"Bhadrak\",\"Bolangir\",\"Dhenkanal\",\"Ganjam\",\"Jharsuguda\",\"Kalahandi\",\"Keonjhar\",\"Khurda\",\"Mayurbhanja\",\"Puri\",\"Sundergarh\"],\n  \"Punjab\": [\"Amritsar\",\"Ferozpur\",\"Gurdaspur\",\"Hoshiarpur\",\"Jalandhar\",\"Kapurthala\",\"Ludhiana\",\"Patiala\",\"Sangrur\",\"Tarntaran\"],\n  \"Rajasthan\": [\"Bharatpur\",\"Hanumangarh\",\"Jalore\",\"Jhunjhunu\",\"Tonk\"],\n  \"Tamil Nadu\": [\"Ariyalur\",\"Chengalpattu\",\"Coimbatore\",\"Cuddalore\",\"Dharmapuri\",\"Dindigul\",\"Erode\",\"Kallakuruchi\",\"Kancheepuram\",\"Karur\",\"Krishnagiri\",\"Madurai\",\"Nagapattinam\",\"Nagercoil (Kannyiakumari)\",\"Namakkal\",\"Perambalur\",\"Pudukkottai\",\"Ramanathapuram\",\"Ranipet\",\"Salem\",\"Sivaganga\",\"Tenkasi\",\"Thanjavur\",\"The Nilgiris\",\"Theni\",\"Thiruchirappalli\",\"Thirunelveli\",\"Thirupathur\",\"Thirupur\",\"Thiruvannamalai\",\"Thiruvarur\",\"Thiruvellore\",\"Tuticorin\",\"Vellore\",\"Villupuram\",\"Virudhunagar\"],\n  \"Telangana\": [\"Bhadradri Kothagudem\",\"Hanumakonda\",\"Hyderabad\",\"Jogulamba Gadwal\",\"Karimnagar\",\"Khammam\",\"Medchal Malkajgiri\",\"Nagarkurnool\",\"Ranga Reddy\",\"Siddipet\",\"Wanaparthy\",\"Warangal\"],\n  \"Tripura\": [\"Dhalai\",\"Khowai\",\"North Tripura\",\"Sepahijala\",\"South Tripura\"],\n  \"Uttar Pradesh\": [\"Agra\",\"Aligarh\",\"Ambedkarnagar\",\"Amethi\",\"Amroha\",\"Auraiya\",\"Ayodhya\",\"Azamgarh\",\"Badaun\",\"Baghpat\",\"Bahraich\",\"Ballia\",\"Balrampur\",\"Banda\",\"Barabanki\",\"Bareilly\",\"Basti\",\"Bijnor\",\"Bulandshahar\",\"Chandauli\",\"Chitrakut\",\"Deoria\",\"Etah\",\"Etawah\",\"Farukhabad\",\"Fatehpur\",\"Firozabad\",\"Gautam Budh Nagar\",\"Ghaziabad\",\"Ghazipur\",\"Gonda\",\"Gorakhpur\",\"Hamirpur\",\"Hardoi\",\"Hathras\",\"Jalaun (Orai)\",\"Jaunpur\",\"Jhansi\",\"Kannuj\",\"Kanpur\",\"Kanpur Dehat\",\"Kasganj\",\"Kaushambi\",\"Khiri (Lakhimpur)\",\"Lakhimpur\",\"Lalitpur\",\"Lucknow\",\"Maharajganj\",\"Mahoba\",\"Mainpuri\",\"Mathura\",\"Meerut\",\"Mirzapur\",\"Muzaffarnagar\",\"Pillibhit\",\"Pratapgarh\",\"Prayagraj\",\"Raebarelli\",\"Rampur\",\"Saharanpur\",\"Sambhal\",\"Sant Kabir Nagar\",\"Shahjahanpur\",\"Shamli\",\"Shravasti\",\"Siddharth Nagar\",\"Sitapur\",\"Sonbhadra\",\"Unnao\",\"Varanasi\"],\n  \"Uttarakhand\": [\"Dehradoon\",\"Haridwar\",\"Nanital\",\"Udhamsinghnagar\"],\n  \"West Bengal\": [\"Bankura\",\"Birbhum\",\"Darjeeling\",\"Hooghly\",\"Kolkata\",\"North 24 Parganas\",\"Purba Bardhaman\",\"Puruliya\",\"Sounth 24 Parganas\"]\n};\n\n// Names that are not spelling variants at all — a nickname, an article, a\n// suffix, an administrative prefix. Each target is an AGMARKNET value.\nconst STATE_ALIASES = {\n  kerala: \"Keralam\",\n  orissa: \"Odisha\",\n  chhattisgarh: \"Chattisgarh\",\n  delhi: \"NCT of Delhi\",\n  newdelhi: \"NCT of Delhi\",\n  uttaranchal: \"Uttarakhand\"\n};\n\nconst DISTRICT_ALIASES = {\n  \"Tamil Nadu\": {\n    trichy: \"Thiruchirappalli\",\n    tiruchirapalli: \"Thiruchirappalli\",\n    nilgiris: \"The Nilgiris\",\n    ooty: \"The Nilgiris\",\n    kanyakumari: \"Nagercoil (Kannyiakumari)\"\n  }\n};\n\nfunction skeleton(value) {\n  return String(value || \"\")\n    .toLowerCase()\n    .replace(/[^a-z]/g, \"\")\n    .replace(/h/g, \"\")\n    .replace(/[aeiou]/g, \"\")\n    .replace(/(.)\\1+/g, \"$1\");\n}\n\nfunction plain(value) {\n  return String(value || \"\").toLowerCase().replace(/[^a-z]/g, \"\");\n}\n\n/** The single matching canonical name, or null when zero or more than one match. */\nfunction resolveOne(input, candidates, aliases) {\n  const raw = plain(input);\n  if (!raw) return null;\n  if (aliases && aliases[raw]) return aliases[raw];\n  const exact = candidates.find((c) => plain(c) === raw);\n  if (exact) return exact;\n  const key = skeleton(input);\n  if (!key) return null;\n  const hits = candidates.filter((c) => skeleton(c) === key);\n  // More than one hit is ambiguous, and guessing between real districts is\n  // exactly what must not happen here.\n  return hits.length === 1 ? hits[0] : null;\n}\n\nconst input = $input.first()?.json ?? {};\nconst askedState = String(input.state ?? \"\").trim();\nconst askedDistrict = String(input.district ?? \"\").trim();\nconst commodity = String(input.commodity ?? \"\").trim();\n\nconst state = resolveOne(askedState, Object.keys(DISTRICT_MAP), STATE_ALIASES);\nif (!state) {\n  return [{ json: { resolved: false, reasonKey: \"state\", askedState, askedDistrict, commodity } }];\n}\n\nconst district = resolveOne(askedDistrict, DISTRICT_MAP[state], DISTRICT_ALIASES[state]);\nif (!district) {\n  return [{ json: { resolved: false, reasonKey: \"district\", askedState, askedDistrict, state, commodity } }];\n}\n\nif (!commodity) {\n  return [{ json: { resolved: false, reasonKey: \"commodity\", askedState, askedDistrict, state, district, commodity: \"\" } }];\n}\n\nreturn [{ json: { resolved: true, state, district, commodity, askedState, askedDistrict } }];\n"
+      },
+      "id": "4c19a52a-d014-4d18-8e30-7741aca1facd",
+      "name": "Resolve Location",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "district-resolved",
+              "leftValue": "={{ $json.resolved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "312a3490-5241-49e7-863c-270a59638ff2",
+      "name": "Resolved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The farmer's state/district could not be matched to an AGMARKNET district,\n// so no query was made. The message names exactly what was searched for, so\n// the farmer can see the mismatch and correct their farm record — guessing a\n// nearby district would be worse than saying nothing.\n\nconst r = $input.first()?.json ?? {};\nconst asked = r.askedDistrict || \"(not set)\";\nconst state = r.state || r.askedState || \"(not set)\";\n\nlet reason;\nswitch (r.reasonKey) {\n  case \"state\":\n    reason = `No market data source matches the state \"${r.askedState || \"(not set)\"}\" on this farm. Check the state on the farm record.`;\n    break;\n  case \"commodity\":\n    reason = \"No crop was selected, so there is nothing to look up.\";\n    break;\n  default:\n    reason = `No market district matching \"${asked}\" was found in ${state}. Check the district on the farm record.`;\n}\n\nconsole.log(\"Market lookup unresolved:\", JSON.stringify({ reasonKey: r.reasonKey, askedState: r.askedState, askedDistrict: r.askedDistrict }));\n\nreturn [{ json: { status: \"unavailable\", reason } }];\n"
+      },
+      "id": "874bfbdb-0bb6-4777-9e0d-6baba2713917",
+      "name": "Build Unresolved Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -200
+      ],
+      "notes": "No AGMARKNET query is made when the district cannot be resolved. The message names what was searched so the farmer can fix the farm record; substituting a nearby district would be worse than saying nothing."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            },
+            {
+              "name": "filters[state]",
+              "value": "={{ $json.state }}"
+            },
+            {
+              "name": "filters[district]",
+              "value": "={{ $json.district }}"
+            },
+            {
+              "name": "filters[commodity]",
+              "value": "={{ $json.commodity }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "041eedb9-cc3f-426e-bfef-a96cbfc2730b",
+      "name": "Fetch AGMARKNET",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        40
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "oHR7Vr7vQQqNhwXR",
+          "name": "Query Auth account"
+        }
+      },
+      "notes": "The data.gov.in key lives only in the n8n Query Auth credential (parameter name \"api-key\"). It is never in this JSON, never in .env, never in the repo. Filters are exact string matches on the resource field ids."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "agmarknet-http-failed",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 400,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "973ea825-c685-4049-89cc-2a59b159cc91",
+      "name": "API Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AGMARKNET failed or was unreachable. The farmer gets a plain message; the\n// technical detail goes to the n8n execution log so failures stay\n// diagnosable without exposing the provider or HTTP internals in the UI.\n\nconst statusCode = $json.statusCode ?? \"unknown\";\nlet body = $json.body ?? {};\nif (typeof body === \"string\") {\n  try { body = JSON.parse(body); } catch { body = { error: body }; }\n}\nconst detail = body?.error ?? body?.message ?? $json.error?.message ?? \"No error message returned.\";\nconsole.log(\"AGMARKNET failure detail:\", statusCode, detail);\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      reason: \"The market price service is currently unavailable. Please try again.\"\n    }\n  }\n];\n"
+      },
+      "id": "191eab20-359d-4cb0-bae1-12d58004b5d4",
+      "name": "Build Unavailable Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Maps the AGMARKNET response into the MarketSnapshot contract\n// (packages/shared-types). Every price passes through exactly as the source\n// reported it; a field the source omitted becomes null, never 0 — a zero\n// rupee price would read as \"free\", which is worse than \"not reported\".\n//\n// Verified response shape (resource 9ef84268-d588-465a-a308-a864a43d0070):\n//   { state, district, market, commodity, variety, grade,\n//     arrival_date: \"DD/MM/YYYY\", min_price, max_price, modal_price }\n// Prices are numbers in rupees per quintal. arrival_date is a DD/MM/YYYY\n// string, not ISO, so it is parsed explicitly rather than handed to Date().\n//\n// This resource is a DAILY SNAPSHOT: every row in it carries the same\n// arrival date. There is no history to page through, which is also why the\n// UI shows a current snapshot and no trend charts.\n\nconst SOURCE = \"agmarknet-data.gov.in\";\n\nconst resolved = $('Resolve Location').first().json;\n\nconst input = $input.first()?.json ?? {};\nlet body = input.body ?? input;\nif (typeof body === \"string\") {\n  try { body = JSON.parse(body); } catch { body = {}; }\n}\n\nconst records = Array.isArray(body.records) ? body.records : [];\n\n// A 200 with an empty records array is how this API reports \"nothing\n// matched\" — status is still \"ok\", so the count has to be checked explicitly.\nif (records.length === 0) {\n  return [\n    {\n      json: {\n        status: \"unavailable\",\n        reason: `No market data was reported today for ${resolved.commodity} in ${resolved.district}.`\n      }\n    }\n  ];\n}\n\nconst num = (v) => {\n  if (typeof v === \"number\" && Number.isFinite(v)) return v;\n  // The API has been seen to return numbers; tolerate numeric strings\n  // without inventing a value for anything genuinely absent.\n  if (typeof v === \"string\" && v.trim() !== \"\" && Number.isFinite(Number(v))) return Number(v);\n  return null;\n};\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\n/** \"DD/MM/YYYY\" -> \"YYYY-MM-DD\", or null if it isn't that shape. */\nconst toIsoDate = (v) => {\n  const m = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(String(v || \"\").trim());\n  if (!m) return null;\n  const [, dd, mm, yyyy] = m;\n  const day = Number(dd), month = Number(mm);\n  if (month < 1 || month > 12 || day < 1 || day > 31) return null;\n  return `${yyyy}-${mm}-${dd}`;\n};\n\nconst quotes = [];\nfor (const r of records) {\n  if (!r || typeof r !== \"object\") continue;\n  const market = text(r.market);\n  // A quote with no market name cannot be shown or distinguished from the\n  // others, so it is dropped rather than rendered as a blank row.\n  if (!market) continue;\n  quotes.push({\n    market,\n    variety: text(r.variety),\n    grade: text(r.grade),\n    minPrice: num(r.min_price),\n    maxPrice: num(r.max_price),\n    modalPrice: num(r.modal_price),\n    reportedOn: toIsoDate(r.arrival_date)\n  });\n}\n\nif (quotes.length === 0) {\n  return [\n    {\n      json: {\n        status: \"unavailable\",\n        reason: `No market data was reported today for ${resolved.commodity} in ${resolved.district}.`\n      }\n    }\n  ];\n}\n\n// Newest first. Rows without a parseable date sort last rather than being\n// dropped — the price is still real, only its date is unreadable.\nquotes.sort((a, b) => {\n  if (a.reportedOn === b.reportedOn) return 0;\n  if (a.reportedOn === null) return 1;\n  if (b.reportedOn === null) return -1;\n  return a.reportedOn < b.reportedOn ? 1 : -1;\n});\n\nconst dates = quotes.map((q) => q.reportedOn).filter((d) => d !== null);\nconst latestReportedOn = dates.length > 0 ? dates[0] : null;\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: SOURCE,\n      data: {\n        commodity: resolved.commodity,\n        state: resolved.state,\n        district: resolved.district,\n        latestReportedOn,\n        priceUnit: \"INR_PER_QUINTAL\",\n        quotes\n      }\n    }\n  }\n];\n"
+      },
+      "id": "2e3a9abb-df6e-4edb-972d-6f2328caf930",
+      "name": "Map Market Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        140
+      ],
+      "notes": "Prices pass through exactly as reported; a missing field becomes null, never 0. arrival_date is parsed from DD/MM/YYYY. An empty records array is \"nothing matched\", not success - this API returns HTTP 200 with status \"ok\" for zero rows."
+    }
+  ],
+  "connections": {
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Resolve Location",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Location": {
+      "main": [
+        [
+          {
+            "node": "Resolved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolved?": {
+      "main": [
+        [
+          {
+            "node": "Fetch AGMARKNET",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unresolved Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch AGMARKNET": {
+      "main": [
+        [
+          {
+            "node": "API Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Failed?": {
+      "main": [
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Map Market Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

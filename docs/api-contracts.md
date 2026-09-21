@@ -54,10 +54,46 @@ Two contract details worth stating explicitly:
 
 Nothing from this endpoint is persisted — weather is read live per view.
 
+### `POST /webhook/market`
+
+Request `{ state, district, commodity, locale }` — the farm's own saved
+`farms.state`/`farms.district` plus the `farm_crops.cropName` the farmer
+selected. Responds with `DataResult<MarketSnapshot>`.
+
+Unauthenticated calls return HTTP 401 and never reach AGMARKNET: the
+workflow's `Authenticated?` false branch terminates at
+`Respond Unauthorized`, which has no onward connection to
+`Market - Core`.
+
+Contract details worth stating explicitly:
+
+- **Current snapshot only.** The AGMARKNET resource behind this is a
+  daily snapshot with no history to page through, so there is no trend
+  data to return and the UI shows no charts.
+- **Every reporting mandi is returned**, not a single "best" price — a
+  farmer compares mandis, and picking one for them would hide the
+  spread.
+- `reportedOn` (per quote) and `latestReportedOn` (the newest across
+  them) are the source's own arrival dates, converted from `DD/MM/YYYY`
+  to `YYYY-MM-DD`. They answer "how current is this?" and are separate
+  from `asOf`, which is only when this request ran.
+- **A price the source omitted is `null`, never `0`** — a zero-rupee
+  price would read as "this crop sold for nothing". The UI renders a
+  `null` as a dash.
+- The returned `state`/`district` are AGMARKNET's own spellings, resolved
+  from what the farmer saved (`Thiruvallur` → `Thiruvellore`). Resolution
+  is exact-or-nothing: text matching zero districts, or more than one,
+  returns `unavailable` naming what was searched for, rather than
+  guessing a neighbouring district.
+- A 200 with zero records is how this API reports "nothing matched", so
+  it is checked explicitly and returned as `unavailable`, not as an empty
+  price table.
+
+Nothing from this endpoint is persisted — prices are read live per view.
+
 ## Planned, in build order
 
 1. `POST /webhook/soil` — Soil Agent
-2. `POST /webhook/market` — Market Agent
-3. `POST /webhook/schemes` — Government Scheme Agent
-4. `POST /webhook/orchestrator` — Orchestrator (fronts Decision Agent +
+2. `POST /webhook/schemes` — Government Scheme Agent
+3. `POST /webhook/orchestrator` — Orchestrator (fronts Decision Agent +
    Language/Voice Service once the above are individually proven)

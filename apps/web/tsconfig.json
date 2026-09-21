@@ -9,6 +9,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    // Tests run on Node's own runner via type stripping, which resolves
+    // the real `.ts` path rather than a bundler-rewritten one.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
