@@ -178,6 +178,81 @@ as a user token. `Market - Core` recorded **zero** executions across all
 three — its latest execution id (192) predates the first rejection (193),
 confirming the false branch terminates before Core.
 
+## Government Schemes Agent (Phase 5)
+
+| Workflow | ID | Role |
+|---|---|---|
+| `Schemes - Core` | `f6lVtDQSTI6CAok5` | Curated catalog, state scoping, criteria evaluation. Exported as `schemes-core.json`. |
+| `Schemes API` | `mfk9O1NprWnLOf5v` | Public `POST /webhook/schemes`. Verifies the Supabase JWT, then calls Core. Exported as `schemes-api.json`. |
+| `Schemes Catalog Check` | `b1WFRhp8rFm0r7UK` | Weekly source-URL and staleness check. Reports only. Exported as `schemes-catalog-check.json`. |
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        ▼
+                               Call 'Schemes - Core'
+
+Core Trigger → Load Catalog → Catalog Usable? ─ false ──→ Build Unavailable Result
+ (state, district,                   │ true
+  areaAcres, crops, locale)          ▼
+                          Filter By State → Evaluate Criteria → Build Match Result
+```
+
+### Editing the catalog
+
+The catalog is a versioned constant inside `Load Catalog`. **Edit the
+readable sources**, not the workflow JSON:
+
+```
+services/n8n/workflows/src/schemes/
+  catalog-literal.js              the catalog itself
+  node-load-catalog.js            input normalisation
+  node-filter-by-state.js         central vs state scoping
+  node-evaluate-criteria.js       criteria + grouping
+  node-build-match-result.js      DataResult wrapper
+  node-build-unavailable-result.js
+  node-collect-report.js          the checker's report
+```
+
+Then push them into n8n, re-publish, re-export, and run
+`node scripts/verify-scheme-catalog.mjs`, which proves the exported
+workflow's `jsCode` is byte-identical to these files and enforces the
+catalog rules (official `https` source, a `lastVerifiedOn` date, at least
+one `manual` criterion per scheme, and an English label for every
+criterion key). Reviewing a catalog change inside a one-line escaped
+string is not reviewing it — that is what these files are for.
+
+**Rules, repeated here because they are the whole point:** never invent a
+scheme, benefit or amount; if a figure is not on the official page,
+describe the benefit qualitatively and link out. Never generate entries
+with an LLM. Only bump `lastVerifiedOn` after actually re-reading the
+source.
+
+### Why it cannot say "you are eligible"
+
+Every entry carries at least one criterion of kind `manual` — something
+only the farmer or the issuing office can confirm. Those always evaluate
+to `cannot_check`, and `Evaluate Criteria` **drops** any scheme whose
+criteria contain none, so a card with nothing left to verify can never
+render. The frontend normalizer enforces the same rule independently, in
+case either side regresses.
+
+What we can check is thin: state, district, `area_acres` and recorded
+crops. Land ownership vs tenancy, total holding across all land, social
+category, income-tax status, Aadhaar/bank linkage and notified-area
+status are all unavailable — see `docs/architecture.md` "Phase 5".
+
+### The checker distinguishes blocked from dead
+
+Several government hosts answer a browser but refuse n8n Cloud — 403 from
+`dac.gov.in`, silent timeouts from `tn.gov.in`, a TLS reset from
+`karnataka.gov.in`. The first run reported 7 of 10 entries dead while
+every one returned 200 from a normal client minutes earlier. So results
+are split four ways — `reachable`, `blocked` (server answered and refused
+us), `missing` (404/410), `unreachable` (no response) — and only
+`missing` plus staleness are flagged as work for a person. A checker that
+cries wolf weekly gets ignored, which is worse than not having one.
+
 ## Crop Diagnosis Agent (Phase 2)
 
 Live in n8n Cloud as two workflows:

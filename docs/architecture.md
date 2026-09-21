@@ -279,6 +279,66 @@ farm context to run against.
 - **No persistence, no migration.** Prices are read live on each view;
   there is no `market` table and nothing is written to Supabase.
 
+## Phase 5 — Government Schemes Agent
+
+- **No API exists, and that shaped the design.** myScheme's own endpoint
+  (`api.myscheme.gov.in/search/v4/schemes`) answers 401 to anything
+  outside its portal; using it would mean impersonating their frontend.
+  data.gov.in publishes scheme budget and beneficiary tables, not
+  eligibility rules. API Setu is org-onboarded identity APIs. So the
+  catalog is **human-curated**, held as a versioned constant inside
+  `Schemes - Core`, with the readable node sources under
+  `services/n8n/workflows/src/schemes/` — reviewing a catalog change
+  inside an escaped one-line string is not reviewing it.
+  `scripts/verify-scheme-catalog.mjs` proves those sources are what n8n
+  actually runs.
+- **The module cannot tell a farmer they are eligible, by
+  construction.** Every entry carries at least one `manual` criterion —
+  something only the farmer or the issuing office can confirm (land
+  records, income-tax status, an enrolment window) — which always
+  evaluates to `cannot_check`, and `Evaluate Criteria` drops any scheme
+  that has none. So every card shows both what matched and what the
+  farmer must still verify. This is not caution for its own sake: a
+  false "you qualify" sends a farmer on a wasted trip, and a false "you
+  don't" costs them a benefit they were entitled to.
+- **What we can and cannot check.** Available: state, district,
+  `area_acres`, recorded crops. Structurally missing, and each blocking a
+  real criterion: land ownership vs tenancy, *total* holding across all
+  land (so small/marginal status can't be derived from one farm), social
+  category, gender, age, income and income-tax status, Aadhaar and bank
+  linkage, existing enrolments, and whether the farm sits in a notified
+  area. That gap is why this is discovery routed to the official source,
+  not an assessment.
+- **n8n**: `Schemes - Core` (`f6lVtDQSTI6CAok5`) loads the catalog,
+  scopes it by state, evaluates criteria and returns the result;
+  `Schemes API` (`mfk9O1NprWnLOf5v`) is the `POST /webhook/schemes` path,
+  verifying the farmer's Supabase JWT before Core runs — verified
+  against the live instance: three rejected calls produced three
+  `Schemes API` executions and zero `Schemes - Core` executions.
+  `Schemes Catalog Check` (`b1WFRhp8rFm0r7UK`) re-tests every source URL
+  weekly. All three exported under `services/n8n/workflows/`.
+- **The checker reports; it never rewrites.** Scraping a scheme's
+  benefit text would replace a fact a person vouched for with a guess.
+  It also distinguishes a *blocked* fetch from a *dead* link: several
+  government hosts (dac.gov.in, tn.gov.in, karnataka.gov.in) answer a
+  browser but refuse n8n Cloud with a 403, a reset or a silent timeout.
+  Its first run called 7 of 10 entries dead while every one returned 200
+  from a normal client minutes earlier, so `blocked` / `unreachable` /
+  `missing` are now separate and only `missing` and staleness are
+  treated as work for a person.
+- **State scoping is exact-or-nothing.** Central schemes apply
+  everywhere; a state scheme needs the farm's free-text state resolved to
+  a canonical name first (`tamilnadu` → `Tamil Nadu`). A farm with no
+  usable state is not told "no state schemes apply" — it gets
+  `stateSchemesSkipped`, and the page says how many could not be
+  considered.
+- **Criteria travel as keys, not prose**, so they render in Tamil,
+  Telugu and Hindi. Scheme names, purposes and benefits keep the official
+  source's wording: translating an entitlement ourselves would risk
+  changing what it promises.
+- **No persistence, no migration.** A read-only discovery list; there is
+  no `schemes` table, no bookmarks and no application tracking.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.

@@ -269,6 +269,83 @@ export interface MarketSnapshot {
   quotes: MarketPriceQuote[];
 }
 
+/** A central scheme applies nationwide; a state scheme only in `states`. */
+export type SchemeLevel = "central" | "state";
+
+/**
+ * One eligibility condition, evaluated against what the farmer actually
+ * recorded.
+ *
+ * `cannot_check` is the important one: it means the condition is real but
+ * only the farmer or the issuing office can confirm it (land records,
+ * income-tax status, an enrolment window). Every scheme in the catalog
+ * carries at least one, which is what makes a bare "you are eligible"
+ * result impossible to construct — see docs/architecture.md "Phase 5".
+ */
+export interface SchemeCriterion {
+  /** Maps to a `schemes.criteria.<key>` label, so criteria translate. */
+  key: string;
+  status: "matched" | "not_matched" | "cannot_check";
+  /** Interpolation values for the label, e.g. `{ state, acres }`. */
+  params: Record<string, string | number> | null;
+}
+
+/**
+ * A curated catalog entry. Scheme content is maintained by hand from
+ * official sources — there is no public API for Indian scheme
+ * eligibility — so `sourceUrl` and `lastVerifiedOn` travel with every
+ * entry and must be shown to the farmer.
+ */
+export interface GovernmentScheme {
+  id: string;
+  name: string;
+  level: SchemeLevel;
+  /** Empty for a central scheme. */
+  states: string[];
+  purpose: string | null;
+  benefit: string | null;
+  /** Empty means the scheme is not crop-specific. */
+  appliesToCrops: string[];
+  sourceName: string;
+  sourceUrl: string;
+  /** YYYY-MM-DD a person last checked this entry against its source. */
+  lastVerifiedOn: string | null;
+}
+
+/**
+ * `matched` — nothing recorded contradicts it and at least one condition
+ * passed. `needs_check` — nothing contradicts it, but nothing could be
+ * checked either. `other` — something recorded does contradict it.
+ *
+ * None of these mean "eligible": `criteria` always carries at least one
+ * `cannot_check` the farmer still has to confirm.
+ */
+export interface SchemeMatch {
+  scheme: GovernmentScheme;
+  group: "matched" | "needs_check" | "other";
+  criteria: SchemeCriterion[];
+  /** Its source hasn't been re-checked inside the staleness window. */
+  stale: boolean;
+}
+
+export interface SchemeMatchResult {
+  /** Resolved to the official spelling, or null if it couldn't be. */
+  state: string | null;
+  district: string | null;
+  /** What the farm record actually said, before resolution. */
+  askedState: string | null;
+  /**
+   * State schemes that couldn't be considered because the farm has no
+   * usable state. Shown to the farmer rather than silently dropped.
+   */
+  stateSchemesSkipped: number;
+  totalSchemes: number;
+  catalogVersion: string | null;
+  /** Oldest `lastVerifiedOn` across the returned entries. */
+  catalogVerifiedOn: string | null;
+  matches: SchemeMatch[];
+}
+
 /**
  * Every live-data module response must be one of these two shapes —
  * never a silently-defaulted value when a source is unavailable.

@@ -247,5 +247,65 @@
     "variety": "Variety",
     "grade": "Grade",
     "snapshotNote": "This is the latest daily snapshot from the source. Price history is not available."
+  },
+  "schemes": {
+    "noFarm": "Add a farm first to see government schemes.",
+    "noState": "This farm has no state saved. Central schemes are shown below, but state schemes cannot be checked without it.",
+    "setState": "Set farm state",
+    "loadError": "Couldn't reach the government scheme list. Please try again.",
+    "disclaimer": "This is a guide, not an eligibility decision. Nothing here confirms that you qualify — every scheme has conditions only you or the scheme office can confirm. Always check the official page before applying.",
+    "basedOnYourRecords": "Based on what you've entered",
+    "youMustCheck": "You need to check these yourself",
+    "officialLink": "Open the official page",
+    "source": "Source: {{source}}",
+    "lastVerified": "Checked on {{date}}",
+    "lastVerifiedUnknown": "No check date recorded",
+    "stale": "May be out of date",
+    "catalogVerified": "Every scheme listed was last checked on or after {{date}}",
+    "catalogVerifiedUnknown": "No check date recorded for this list",
+    "fetchedAt": "loaded at {{time}}",
+    "curatedNote": "There is no public government API for scheme eligibility, so this list is maintained by hand from official sources. Always confirm on the official page.",
+    "stateSchemesSkipped_one": "{{count}} state scheme was not checked because this farm has no state saved.",
+    "stateSchemesSkipped_other": "{{count}} state schemes were not checked because this farm has no state saved.",
+    "criteriaUnknown": "An additional condition applies — see the official page.",
+    "group": {
+      "matched": "Matches what you've told us",
+      "needs_check": "Could not be assessed",
+      "other": "Unlikely to apply"
+    },
+    "groupHint": {
+      "matched": "Nothing you've entered rules these out. You still have to confirm the conditions below.",
+      "needs_check": "Nothing you've entered bears on these either way.",
+      "other": "Something you've entered does not meet a condition of these schemes."
+    },
+    "level": {
+      "central": "Central",
+      "state": "State"
+    },
+    "status": {
+      "matched": "Matches",
+      "not_matched": "Does not match",
+      "cannot_check": "You must check"
+    },
+    "criteria": {
+      "landRecorded": "You have a farm with land area recorded",
+      "landOwnership": "The land must be in your name in official land records",
+      "notIncomeTaxPayer": "You must not be an income-tax payer",
+      "notGovtOrProfessional": "You must not be a serving or retired government employee above the pension limit, or a registered professional",
+      "bankAadhaar": "You need an Aadhaar-linked bank account",
+      "cropRecorded": "You have at least one crop recorded",
+      "notifiedCropArea": "Your crop and area must be notified for this season",
+      "enrolmentWindow": "You must apply within the enrolment window",
+      "sampleCycle": "Your area must be in the current soil-sampling cycle",
+      "localRegistration": "You must register with the local office",
+      "landOwnershipOrTenancy": "You must hold the land as owner, tenant or sharecropper",
+      "bankBranch": "Your bank branch decides the limit and terms",
+      "existingPump": "You need an existing irrigation pump or grid connection",
+      "stateComponentOpen": "Your state's component of the scheme must be open",
+      "entityType": "You must be an eligible applicant type, such as an FPO, co-operative or entrepreneur",
+      "projectProposal": "You must submit a project proposal",
+      "itemNotified": "The equipment or work must be on the notified list",
+      "stateMatch": "Your farm is in {{state}}"
+    }
   }
 }

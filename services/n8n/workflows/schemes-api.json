@@ -1,0 +1,216 @@
+{
+  "name": "Schemes API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "schemes",
+        "responseMode": "responseNode"
+      },
+      "id": "4d0f6d30-f033-469c-aec3-4ccf1447654d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://czswdbfgfjteajfvwyid.supabase.co/auth/v1/user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SET_IN_N8N_UI"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headers.authorization }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "483d6536-a3c9-4a66-8f53-08dc32186219",
+      "name": "Verify Supabase Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        96
+      ],
+      "notesInFlow": true,
+      "notes": "Sends the publishable anon key as apikey plus the caller's Authorization header verbatim. Supabase checks signature, expiry and session validity, so n8n needs no service-role key and no JWT secret. neverError keeps a 401 on the normal output so the IF can route it."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "schemes-auth-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6f738324-f3bb-4f33-8790-b50f8fb5bed6",
+      "name": "Authenticated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "f6lVtDQSTI6CAok5",
+          "mode": "list",
+          "cachedResultName": "Schemes - Core",
+          "cachedResultUrl": "/workflow/f6lVtDQSTI6CAok5"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $('Webhook').first().json.body.state }}",
+            "district": "={{ $('Webhook').first().json.body.district }}",
+            "areaAcres": "={{ $('Webhook').first().json.body.areaAcres }}",
+            "crops": "={{ JSON.stringify($('Webhook').first().json.body.crops || []) }}",
+            "locale": "={{ $('Webhook').first().json.body.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "20d3e19e-32e6-41df-87e7-1389878084a2",
+      "name": "Call 'Schemes - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "e88cda64-ec27-440e-b0f2-5ed3dc23c898",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"unavailable\", reason: \"Authentication required.\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "26c265d0-19fd-4abe-aa5e-88813d176e4d",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        192
+      ],
+      "notesInFlow": true,
+      "notes": "Terminates before Call Schemes - Core, so an unauthenticated caller never reaches the scheme catalog."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Supabase Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Supabase Token": {
+      "main": [
+        [
+          {
+            "node": "Authenticated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticated?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Schemes - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Schemes - Core'": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

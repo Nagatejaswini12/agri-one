@@ -1,0 +1,206 @@
+{
+  "name": "Schemes - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "state"
+            },
+            {
+              "name": "district"
+            },
+            {
+              "name": "areaAcres"
+            },
+            {
+              "name": "crops"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "7fe84fa5-1b29-4ce1-a987-2327e870b636",
+      "name": "Core Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------\n// CURATED SCHEME CATALOG — HUMAN-MAINTAINED, NOT LIVE DATA.\n//\n// There is no public API for Indian government scheme eligibility.\n// myScheme's own endpoint (api.myscheme.gov.in/search/v4/schemes) returns\n// 401 to anyone outside its portal, and data.gov.in publishes scheme\n// budget/beneficiary tables, not eligibility rules. So this catalog is\n// curated by hand from official sources and every entry carries the\n// source it came from plus the date a human last checked it.\n//\n// RULES FOR EDITING THIS CATALOG:\n//  1. Never invent a scheme, a benefit, or an amount. If a figure is not\n//     stated on the official source, describe the benefit qualitatively\n//     and let the farmer read the source.\n//  2. sourceUrl must be an official government URL, and must be live.\n//     The \"Schemes Catalog Check\" workflow tests these on a schedule.\n//  3. Update lastVerifiedOn (YYYY-MM-DD) whenever you re-read the source\n//     and confirm the entry still matches it. Do not bump the date\n//     without actually re-reading.\n//  4. Never generate entries with an LLM at runtime. The whole point of\n//     a curated catalog is that a person vouched for each line.\n//  5. Every scheme MUST carry at least one criterion of kind \"manual\" —\n//     something only the farmer or the issuing office can confirm. This\n//     is what makes a bare \"you are eligible\" result unconstructible.\n//\n// Criterion kinds evaluated by \"Evaluate Criteria\":\n//   farm_record          always matched (a farm was selected)\n//   land_area_recorded   areaAcres present -> matched, null -> cannot_check\n//   max_area_acres       params.acres; null area -> cannot_check\n//   state_match          farm's resolved state is in scheme.states\n//   crop_recorded        farm has >= 1 crop\n//   crop_in              params.crops, case-insensitive\n//   manual               always cannot_check\n// ---------------------------------------------------------------------\n\nconst CATALOG_VERSION = \"2026-09-21\";\n\nconst CATALOG = [\n  {\n    id: \"pm-kisan\",\n    name: \"Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)\",\n    level: \"central\",\n    states: [],\n    purpose: \"Income support for landholding farmer families.\",\n    benefit:\n      \"Rs 6,000 per year, paid in three equal instalments of Rs 2,000 directly into the beneficiary's bank account.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"landOwnership\", kind: \"manual\" },\n      { key: \"notIncomeTaxPayer\", kind: \"manual\" },\n      { key: \"notGovtOrProfessional\", kind: \"manual\" },\n      { key: \"bankAadhaar\", kind: \"manual\" }\n    ],\n    sourceName: \"PM-KISAN portal, Department of Agriculture and Farmers Welfare\",\n    sourceUrl: \"https://pmkisan.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"pmfby\",\n    name: \"Pradhan Mantri Fasal Bima Yojana (PMFBY)\",\n    level: \"central\",\n    states: [],\n    purpose: \"Crop insurance against yield loss from natural risks.\",\n    benefit:\n      \"The farmer's share of the premium is capped at 2% of the sum insured for Kharif food and oilseed crops, 1.5% for Rabi, and 5% for commercial and horticultural crops. The balance is subsidised by the Centre and the State.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"cropRecorded\", kind: \"crop_recorded\" },\n      { key: \"notifiedCropArea\", kind: \"manual\" },\n      { key: \"enrolmentWindow\", kind: \"manual\" },\n      { key: \"bankAadhaar\", kind: \"manual\" }\n    ],\n    sourceName: \"PMFBY portal, Department of Agriculture and Farmers Welfare\",\n    sourceUrl: \"https://pmfby.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"soil-health-card\",\n    name: \"Soil Health Card Scheme\",\n    level: \"central\",\n    states: [],\n    purpose:\n      \"Soil testing and a card reporting nutrient status with crop-wise fertiliser recommendations.\",\n    benefit:\n      \"Soil sample testing and a Soil Health Card issued to the farmer through the State agriculture department.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"sampleCycle\", kind: \"manual\" },\n      { key: \"localRegistration\", kind: \"manual\" }\n    ],\n    sourceName: \"Soil Health Card portal, Department of Agriculture and Farmers Welfare\",\n    sourceUrl: \"https://soilhealth.dac.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"kcc\",\n    name: \"Kisan Credit Card (KCC)\",\n    level: \"central\",\n    states: [],\n    purpose: \"Short-term credit for cultivation expenses and allied activities.\",\n    benefit:\n      \"A revolving credit facility for crop and allied-activity expenses, with interest subvention available on prompt repayment. The credit limit and rate are set by the lending bank under RBI and NABARD norms.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"landOwnershipOrTenancy\", kind: \"manual\" },\n      { key: \"bankBranch\", kind: \"manual\" }\n    ],\n    sourceName: \"myScheme, National Portal of India\",\n    sourceUrl: \"https://www.myscheme.gov.in/schemes/kcc\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"pm-kusum\",\n    name: \"PM-KUSUM (Kisan Urja Suraksha evam Utthaan Mahabhiyan)\",\n    level: \"central\",\n    states: [],\n    purpose: \"Solar pumps and solarisation of agricultural pumps.\",\n    benefit:\n      \"Central financial assistance towards standalone solar pumps and the solarisation of existing grid-connected agricultural pumps. Assistance shares are set component-wise by MNRE and the State.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"existingPump\", kind: \"manual\" },\n      { key: \"stateComponentOpen\", kind: \"manual\" }\n    ],\n    sourceName: \"PM-KUSUM portal, Ministry of New and Renewable Energy\",\n    sourceUrl: \"https://pmkusum.mnre.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"agri-infrastructure-fund\",\n    name: \"Agriculture Infrastructure Fund (AIF)\",\n    level: \"central\",\n    states: [],\n    purpose: \"Financing for post-harvest management and community farming assets.\",\n    benefit:\n      \"Medium- to long-term debt financing for eligible post-harvest and community farming infrastructure, with interest subvention and credit-guarantee support.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"entityType\", kind: \"manual\" },\n      { key: \"projectProposal\", kind: \"manual\" },\n      { key: \"bankBranch\", kind: \"manual\" }\n    ],\n    sourceName: \"Agriculture Infrastructure Fund portal, Department of Agriculture and Farmers Welfare\",\n    sourceUrl: \"https://agriinfra.dac.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"tn-uzhavar-sandhai\",\n    name: \"Uzhavar Sandhai (Farmers' Market)\",\n    level: \"state\",\n    states: [\"Tamil Nadu\"],\n    purpose:\n      \"Selling space for farmers to sell their produce directly to consumers, without intermediaries.\",\n    benefit:\n      \"A designated selling slot in a government-run farmers' market, with prices fixed daily by the Tamil Nadu State Agricultural Marketing Board.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"stateMatch\", kind: \"state_match\" },\n      { key: \"cropRecorded\", kind: \"crop_recorded\" },\n      { key: \"localRegistration\", kind: \"manual\" }\n    ],\n    sourceName:\n      \"Department of Agricultural Marketing and Agri Business, Government of Tamil Nadu\",\n    sourceUrl: \"https://www.agrimark.tn.gov.in/index.php/Infra/us_details\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"tn-aed-individual-subsidy\",\n    name: \"Tamil Nadu Agricultural Engineering Individual-Based Subsidy Schemes\",\n    level: \"state\",\n    states: [\"Tamil Nadu\"],\n    purpose:\n      \"Subsidy assistance to individual farmers for farm machinery, irrigation and land development works.\",\n    benefit:\n      \"Individual-farmer subsidy on approved equipment and works. Rates and eligible items are notified by the Department of Agricultural Engineering and change by scheme year.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"stateMatch\", kind: \"state_match\" },\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"itemNotified\", kind: \"manual\" },\n      { key: \"localRegistration\", kind: \"manual\" }\n    ],\n    sourceName: \"Department of Agricultural Engineering, Government of Tamil Nadu\",\n    sourceUrl: \"https://aed.tn.gov.in/en/individual-based-subsidy-schemes/\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"mh-mahadbt-farmer\",\n    name: \"MahaDBT Farmer Schemes (Maharashtra)\",\n    level: \"state\",\n    states: [\"Maharashtra\"],\n    purpose: \"Single-window application portal for Maharashtra's farmer subsidy schemes.\",\n    benefit:\n      \"Access to the State's farmer subsidy schemes through a single application. Individual scheme benefits and rates are defined per scheme on the portal.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"stateMatch\", kind: \"state_match\" },\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"localRegistration\", kind: \"manual\" }\n    ],\n    sourceName: \"MahaDBT, Government of Maharashtra\",\n    sourceUrl: \"https://mahadbt.maharashtra.gov.in/Farmer/Login/Login\",\n    lastVerifiedOn: \"2026-09-21\"\n  },\n  {\n    id: \"ka-raitamitra\",\n    name: \"Raitha Mitra - Karnataka Department of Agriculture Schemes\",\n    level: \"state\",\n    states: [\"Karnataka\"],\n    purpose: \"Karnataka's farmer-facing portal for departmental schemes and services.\",\n    benefit:\n      \"Access to Karnataka Department of Agriculture schemes and services. Individual benefits are defined per scheme on the portal.\",\n    appliesToCrops: [],\n    criteria: [\n      { key: \"stateMatch\", kind: \"state_match\" },\n      { key: \"landRecorded\", kind: \"land_area_recorded\" },\n      { key: \"localRegistration\", kind: \"manual\" }\n    ],\n    sourceName: \"Department of Agriculture, Government of Karnataka\",\n    sourceUrl: \"https://raitamitra.karnataka.gov.in/\",\n    lastVerifiedOn: \"2026-09-21\"\n  }\n];\n\n// Normalizes the caller's inputs and emits the curated catalog for the\n// rest of the pipeline. Nothing here reads the request to decide what a\n// scheme says: the catalog is a fixed constant, so a crafted request can\n// never introduce scheme content (see docs/api-contracts.md).\n\nconst input = $input.first() ? $input.first().json : {};\n\nconst text = (v) =>\n  typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null;\n\n// areaAcres arrives as a string when the API workflow stringifies inputs;\n// anything non-numeric stays null so the area criterion says\n// \"cannot check\" rather than silently reading as 0 acres.\nconst num = (v) => {\n  if (typeof v === \"number\" && Number.isFinite(v)) return v;\n  if (typeof v === \"string\" && v.trim() !== \"\" && Number.isFinite(Number(v))) {\n    return Number(v);\n  }\n  return null;\n};\n\n// crops may arrive as a JSON string (Execute Workflow stringifies inputs),\n// as a real array, or as a comma-separated list. Nothing is invented if\n// none of those parse: the farmer simply has no crops recorded.\nconst parseCrops = (v) => {\n  let raw = v;\n  if (typeof raw === \"string\") {\n    const s = raw.trim();\n    if (s === \"\") return [];\n    if (s.charAt(0) === \"[\") {\n      try {\n        raw = JSON.parse(s);\n      } catch (e) {\n        raw = s.split(\",\");\n      }\n    } else {\n      raw = s.split(\",\");\n    }\n  }\n  if (!Array.isArray(raw)) return [];\n  const out = [];\n  for (const item of raw) {\n    const name =\n      typeof item === \"string\"\n        ? item\n        : item && typeof item === \"object\"\n          ? item.cropName || item.crop_name || item.name\n          : null;\n    const cleaned = text(name);\n    if (cleaned) out.push(cleaned);\n  }\n  return out;\n};\n\nreturn [\n  {\n    json: {\n      askedState: text(input.state),\n      askedDistrict: text(input.district),\n      areaAcres: num(input.areaAcres),\n      crops: parseCrops(input.crops),\n      locale: text(input.locale) || \"en\",\n      catalogVersion: CATALOG_VERSION,\n      catalogCount: CATALOG.length,\n      catalog: CATALOG\n    }\n  }\n];\n"
+      },
+      "id": "62340134-ff43-4ff0-912a-893a8b88c4db",
+      "name": "Load Catalog",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "notesInFlow": true,
+      "notes": "Human-curated catalog, versioned in services/n8n/workflows/schemes-core.json. No public API exists for Indian scheme eligibility, so entries are maintained by hand with a source link and a lastVerifiedOn date. Never generated by an LLM and never derived from the request."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "schemes-catalog-nonempty",
+              "leftValue": "={{ $json.catalogCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "94de6f11-4f9c-49a6-bea2-8864bf069734",
+      "name": "Catalog Usable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decides which schemes are even in scope for this farm.\n//\n// Central schemes apply everywhere. A state scheme applies only to its own\n// states, and only once the farm's free-text state has been resolved to a\n// canonical name. A farm with no saved state is NOT treated as \"no state\n// schemes apply\" — it is treated as \"state schemes could not be\n// considered\", and the flag below makes the UI say exactly that.\n//\n// Resolution is exact-or-nothing, the same discipline as the Market\n// Agent's district matching: lowercase, letters only, then compare. That\n// handles \"tamilnadu\" / \"Tamil Nadu\" / \"TAMIL NADU\" without ever guessing\n// between two different states.\n\nconst STATES = [\n  \"Andhra Pradesh\", \"Arunachal Pradesh\", \"Assam\", \"Bihar\", \"Chhattisgarh\",\n  \"Goa\", \"Gujarat\", \"Haryana\", \"Himachal Pradesh\", \"Jharkhand\", \"Karnataka\",\n  \"Kerala\", \"Madhya Pradesh\", \"Maharashtra\", \"Manipur\", \"Meghalaya\",\n  \"Mizoram\", \"Nagaland\", \"Odisha\", \"Punjab\", \"Rajasthan\", \"Sikkim\",\n  \"Tamil Nadu\", \"Telangana\", \"Tripura\", \"Uttar Pradesh\", \"Uttarakhand\",\n  \"West Bengal\", \"Andaman and Nicobar Islands\", \"Chandigarh\",\n  \"Dadra and Nagar Haveli and Daman and Diu\", \"Delhi\", \"Jammu and Kashmir\",\n  \"Ladakh\", \"Lakshadweep\", \"Puducherry\"\n];\n\n// Names that are not spelling variants but different names entirely.\nconst STATE_ALIASES = {\n  orissa: \"Odisha\",\n  keralam: \"Kerala\",\n  pondicherry: \"Puducherry\",\n  uttaranchal: \"Uttarakhand\",\n  newdelhi: \"Delhi\",\n  nctofdelhi: \"Delhi\",\n  jammukashmir: \"Jammu and Kashmir\"\n};\n\nconst plain = (v) =>\n  String(v == null ? \"\" : v).toLowerCase().replace(/[^a-z]/g, \"\");\n\nconst resolveState = (asked) => {\n  const key = plain(asked);\n  if (!key) return null;\n  if (STATE_ALIASES[key]) return STATE_ALIASES[key];\n  const hits = STATES.filter((s) => plain(s) === key);\n  return hits.length === 1 ? hits[0] : null;\n};\n\nconst data = $input.first().json;\nconst stateResolved = resolveState(data.askedState);\n\nconst inScope = [];\nfor (const scheme of data.catalog) {\n  if (scheme.level === \"central\") {\n    inScope.push(scheme);\n    continue;\n  }\n  // A state scheme needs a resolved state to be in scope at all. Without\n  // one it is left out of the results and counted below, so the farmer is\n  // told how many schemes could not be considered rather than being shown\n  // a shorter list with no explanation.\n  if (stateResolved && scheme.states.indexOf(stateResolved) !== -1) {\n    inScope.push(scheme);\n  }\n}\n\nconst stateSchemesSkipped = stateResolved\n  ? 0\n  : data.catalog.filter((s) => s.level === \"state\").length;\n\nreturn [\n  {\n    json: {\n      askedState: data.askedState,\n      askedDistrict: data.askedDistrict,\n      stateResolved,\n      stateSchemesSkipped,\n      areaAcres: data.areaAcres,\n      crops: data.crops,\n      locale: data.locale,\n      catalogVersion: data.catalogVersion,\n      totalSchemes: data.catalog.length,\n      schemes: inScope\n    }\n  }\n];\n"
+      },
+      "id": "138bece9-0ab8-4901-baae-6c44771d6237",
+      "name": "Filter By State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evaluates each in-scope scheme's criteria against what the farmer has\n// actually recorded, and sorts it into one of three groups.\n//\n// THIS DELIBERATELY CANNOT PRODUCE AN \"ELIGIBLE\" VERDICT. Every catalog\n// entry carries at least one criterion of kind \"manual\" — something only\n// the farmer or the issuing office can confirm (land records, income-tax\n// status, an enrolment window). Those always evaluate to \"cannot_check\"\n// and are always returned, so the strongest statement the UI can make is\n// \"this matches what you have told us\", never \"you qualify\". Getting that\n// wrong in either direction is costly: a false yes sends a farmer on a\n// wasted trip, a false no costs them a benefit they were entitled to.\n//\n// Groups:\n//   other       at least one criterion is contradicted by recorded data\n//   matched     nothing contradicted, and at least one criterion passed\n//   needs_check nothing contradicted, but nothing could be checked either\n\nconst STALENESS_DAYS = 180;\n\nconst data = $input.first().json;\nconst areaAcres = data.areaAcres;\nconst crops = Array.isArray(data.crops) ? data.crops : [];\nconst cropsLower = crops.map((c) => String(c).toLowerCase());\n\nconst evaluateCriterion = (criterion, scheme) => {\n  const kind = criterion.kind;\n\n  if (kind === \"farm_record\") {\n    return { status: \"matched\", params: null };\n  }\n\n  if (kind === \"land_area_recorded\") {\n    return {\n      status: areaAcres === null ? \"cannot_check\" : \"matched\",\n      params: areaAcres === null ? null : { acres: areaAcres }\n    };\n  }\n\n  if (kind === \"max_area_acres\") {\n    const limit = criterion.params ? criterion.params.acres : null;\n    if (areaAcres === null || limit == null) {\n      return { status: \"cannot_check\", params: { acres: limit } };\n    }\n    return {\n      status: areaAcres <= limit ? \"matched\" : \"not_matched\",\n      params: { acres: limit }\n    };\n  }\n\n  if (kind === \"state_match\") {\n    if (!data.stateResolved) return { status: \"cannot_check\", params: null };\n    return {\n      status: scheme.states.indexOf(data.stateResolved) !== -1 ? \"matched\" : \"not_matched\",\n      params: { state: data.stateResolved }\n    };\n  }\n\n  if (kind === \"crop_recorded\") {\n    return { status: crops.length > 0 ? \"matched\" : \"not_matched\", params: null };\n  }\n\n  if (kind === \"crop_in\") {\n    const wanted = criterion.params && Array.isArray(criterion.params.crops)\n      ? criterion.params.crops\n      : [];\n    // No recorded crop is not the same as a wrong crop: the first is\n    // unknown, the second is a genuine mismatch.\n    if (crops.length === 0) return { status: \"cannot_check\", params: { crops: wanted } };\n    const hit = wanted.some((w) => cropsLower.indexOf(String(w).toLowerCase()) !== -1);\n    return { status: hit ? \"matched\" : \"not_matched\", params: { crops: wanted } };\n  }\n\n  // \"manual\" and anything unrecognised. An unknown kind must never count\n  // as a pass, so it degrades to the same \"farmer must confirm\" state.\n  return { status: \"cannot_check\", params: null };\n};\n\nconst daysSince = (iso) => {\n  if (typeof iso !== \"string\" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(iso)) return null;\n  const then = Date.parse(iso + \"T00:00:00Z\");\n  if (Number.isNaN(then)) return null;\n  return Math.floor((Date.now() - then) / 86400000);\n};\n\n// A malformed entry is dropped rather than half-rendered — a scheme card\n// with no name or no source link is worse than one fewer scheme.\nconst isUsable = (s) =>\n  s &&\n  typeof s === \"object\" &&\n  typeof s.id === \"string\" && s.id.trim() !== \"\" &&\n  typeof s.name === \"string\" && s.name.trim() !== \"\" &&\n  (s.level === \"central\" || s.level === \"state\") &&\n  Array.isArray(s.states) &&\n  typeof s.sourceUrl === \"string\" && /^https:\\/\\//.test(s.sourceUrl) &&\n  typeof s.sourceName === \"string\" && s.sourceName.trim() !== \"\" &&\n  Array.isArray(s.criteria) && s.criteria.length > 0;\n\nconst matches = [];\nlet oldestVerified = null;\n\nfor (const scheme of data.schemes) {\n  if (!isUsable(scheme)) continue;\n\n  const criteria = [];\n  for (const c of scheme.criteria) {\n    if (!c || typeof c.key !== \"string\" || typeof c.kind !== \"string\") continue;\n    const result = evaluateCriterion(c, scheme);\n    criteria.push({ key: c.key, status: result.status, params: result.params });\n  }\n  if (criteria.length === 0) continue;\n\n  const notMatched = criteria.filter((c) => c.status === \"not_matched\").length;\n  const matchedCount = criteria.filter((c) => c.status === \"matched\").length;\n  const cannotCheck = criteria.filter((c) => c.status === \"cannot_check\").length;\n\n  // Invariant the contract depends on: if a scheme is shown at all, the\n  // farmer is shown something they still have to verify themselves.\n  if (cannotCheck === 0) continue;\n\n  const group = notMatched > 0 ? \"other\" : matchedCount > 0 ? \"matched\" : \"needs_check\";\n\n  const age = daysSince(scheme.lastVerifiedOn);\n  if (age !== null && (oldestVerified === null || scheme.lastVerifiedOn < oldestVerified)) {\n    oldestVerified = scheme.lastVerifiedOn;\n  }\n\n  matches.push({\n    scheme: {\n      id: scheme.id,\n      name: scheme.name,\n      level: scheme.level,\n      states: scheme.states,\n      purpose: scheme.purpose || null,\n      benefit: scheme.benefit || null,\n      appliesToCrops: Array.isArray(scheme.appliesToCrops) ? scheme.appliesToCrops : [],\n      sourceName: scheme.sourceName,\n      sourceUrl: scheme.sourceUrl,\n      lastVerifiedOn: typeof scheme.lastVerifiedOn === \"string\" ? scheme.lastVerifiedOn : null\n    },\n    group,\n    criteria,\n    stale: age === null ? true : age > STALENESS_DAYS\n  });\n}\n\nreturn [\n  {\n    json: {\n      askedState: data.askedState,\n      askedDistrict: data.askedDistrict,\n      stateResolved: data.stateResolved,\n      stateSchemesSkipped: data.stateSchemesSkipped,\n      locale: data.locale,\n      catalogVersion: data.catalogVersion,\n      totalSchemes: data.totalSchemes,\n      catalogVerifiedOn: oldestVerified,\n      matches\n    }\n  }\n];\n"
+      },
+      "id": "9b9a6c94-3985-4893-af43-98b094a64657",
+      "name": "Evaluate Criteria",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Cannot produce an \"eligible\" verdict by construction: every catalog entry carries at least one manual criterion that always evaluates to cannot_check, and a scheme with zero cannot_check criteria is dropped."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Wraps the evaluated matches in the DataResult contract\n// (packages/shared-types). asOf is when this request ran;\n// catalogVerifiedOn is when a human last checked the oldest entry in the\n// catalog. They are separate on purpose — \"checked just now\" and\n// \"verified six months ago\" are different facts, and collapsing them\n// would overstate how current the scheme information is.\n\nconst SOURCE = \"agri-one-curated-scheme-catalog\";\n\nconst data = $input.first().json;\nconst matches = Array.isArray(data.matches) ? data.matches : [];\n\n// An in-scope catalog that evaluates to nothing renderable is reported as\n// unavailable rather than as an empty list, so the farmer is never left\n// looking at a blank page wondering whether it loaded.\nif (matches.length === 0) {\n  return [\n    {\n      json: {\n        status: \"unavailable\",\n        reason: \"No government schemes could be listed for this farm right now.\"\n      }\n    }\n  ];\n}\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: SOURCE,\n      data: {\n        state: data.stateResolved,\n        district: data.askedDistrict,\n        askedState: data.askedState,\n        stateSchemesSkipped: data.stateSchemesSkipped,\n        totalSchemes: data.totalSchemes,\n        catalogVersion: data.catalogVersion,\n        catalogVerifiedOn: data.catalogVerifiedOn,\n        matches\n      }\n    }\n  }\n];\n"
+      },
+      "id": "3b9fd44d-1562-45e8-8667-4671636f41d3",
+      "name": "Build Match Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The curated catalog is empty or unreadable, so there is nothing\n// truthful to show. The farmer gets a plain message; the detail goes to\n// the n8n execution log so the failure stays diagnosable without leaking\n// internals into the UI.\n\nconst data = $input.first() ? $input.first().json : {};\nconsole.log(\n  \"Scheme catalog unusable:\",\n  JSON.stringify({ catalogVersion: data.catalogVersion, catalogCount: data.catalogCount })\n);\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      reason: \"The government scheme list is not available right now. Please try again.\"\n    }\n  }\n];\n"
+      },
+      "id": "10bd0beb-b470-422e-b85f-4dd4c61e3080",
+      "name": "Build Unavailable Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Catalog": {
+      "main": [
+        [
+          {
+            "node": "Catalog Usable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalog Usable?": {
+      "main": [
+        [
+          {
+            "node": "Filter By State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter By State": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Criteria": {
+      "main": [
+        [
+          {
+            "node": "Build Match Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
