@@ -1,0 +1,510 @@
+{
+  "name": "Orchestrator - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "farmId"
+            },
+            {
+              "name": "state"
+            },
+            {
+              "name": "district"
+            },
+            {
+              "name": "latitude"
+            },
+            {
+              "name": "longitude"
+            },
+            {
+              "name": "areaAcres"
+            },
+            {
+              "name": "crops"
+            },
+            {
+              "name": "primaryCrop"
+            },
+            {
+              "name": "latestSoil"
+            },
+            {
+              "name": "recentScans"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "766ef56c-8251-4093-948c-693f6d714e09",
+      "name": "Core Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalises the farm context the frontend supplied and decides which\n// agents are worth calling at all.\n//\n// n8n never reads Supabase here: everything about the farm arrives in\n// the request, already scoped to the signed-in farmer by row-level\n// security on the frontend's own queries. That keeps this workflow\n// holding no database credential.\n//\n// Readiness is computed rather than discovered by failure: calling\n// Weather - Core with no coordinates would burn a round trip to learn\n// something the farm record already told us, and would report \"the\n// weather service failed\" when the truth is \"this farm has no location\n// saved\" — a difference the farmer can act on.\n\nconst input = $input.first() ? $input.first().json : {};\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\nconst num = (v) => {\n  if (typeof v === \"number\" && Number.isFinite(v)) return v;\n  if (typeof v === \"string\" && v.trim() !== \"\" && Number.isFinite(Number(v))) return Number(v);\n  return null;\n};\n\n// Arrays arrive JSON-stringified because Execute Workflow stringifies\n// its inputs. Anything unparseable degrades to empty rather than\n// throwing — a missing scan list is a thinner briefing, not an error.\nconst parseArray = (v) => {\n  let raw = v;\n  if (typeof raw === \"string\") {\n    const s = raw.trim();\n    if (s === \"\") return [];\n    try {\n      raw = JSON.parse(s);\n    } catch (e) {\n      return [];\n    }\n  }\n  return Array.isArray(raw) ? raw : [];\n};\n\nconst parseObject = (v) => {\n  let raw = v;\n  if (typeof raw === \"string\") {\n    const s = raw.trim();\n    if (s === \"\" || s === \"null\") return null;\n    try {\n      raw = JSON.parse(s);\n    } catch (e) {\n      return null;\n    }\n  }\n  return raw && typeof raw === \"object\" && !Array.isArray(raw) ? raw : null;\n};\n\nconst state = text(input.state);\nconst district = text(input.district);\nconst latitude = num(input.latitude);\nconst longitude = num(input.longitude);\nconst crops = parseArray(input.crops).map((c) => text(c)).filter((c) => c !== null);\nconst primaryCrop = text(input.primaryCrop) || (crops.length > 0 ? crops[0] : null);\n\nconst rawScans = parseArray(input.recentScans);\n// Only the fields the rules are permitted to use. The disease label and\n// disclaimer text are never sent by the frontend and are not accepted\n// here either, so no rule can turn a diagnosis into a treatment.\nconst recentScans = [];\nfor (const s of rawScans) {\n  if (!s || typeof s !== \"object\") continue;\n  const createdAt = text(s.createdAt);\n  if (!createdAt) continue;\n  recentScans.push({\n    scanId: text(s.scanId),\n    cropName: text(s.cropName),\n    createdAt,\n    category: text(s.category),\n    confidenceLevel: text(s.confidenceLevel),\n    recommendExpertConsult: s.recommendExpertConsult === true\n  });\n}\nrecentScans.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));\n\nconst rawSoil = parseObject(input.latestSoil);\n// Presence and age only — NPK and pH are deliberately not part of this\n// contract, so soil chemistry cannot become advice.\nconst latestSoil = rawSoil && text(rawSoil.testedOn) ? { testedOn: text(rawSoil.testedOn) } : null;\n\nconst context = {\n  farmId: text(input.farmId),\n  state,\n  district,\n  latitude,\n  longitude,\n  areaAcres: num(input.areaAcres),\n  crops,\n  primaryCrop,\n  latestSoil,\n  recentScans,\n  locale: text(input.locale) || \"en\"\n};\n\nconst weatherReady = latitude !== null && longitude !== null;\nconst marketReady = state !== null && district !== null && primaryCrop !== null;\n\nreturn [\n  {\n    json: {\n      context,\n      contextJson: JSON.stringify(context),\n      locale: context.locale,\n      weatherReady,\n      marketReady,\n      weatherSkipReason: weatherReady ? null : \"noCoordinates\",\n      marketSkipReason: !state || !district ? \"noDistrict\" : !primaryCrop ? \"noCrop\" : null\n    }\n  }\n];\n"
+      },
+      "id": "94ec7283-c514-4859-9336-4847365e3fd0",
+      "name": "Build Agent Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        480
+      ],
+      "notesInFlow": true,
+      "notes": "Farm context comes from the request, never from Supabase: this workflow holds no database credential. Soil arrives as testedOn only and scans without a disease label, so no rule downstream can turn either into agronomic advice."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "orch-weather-ready",
+              "leftValue": "={{ $json.weatherReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "76a60f1b-ce68-4140-bad3-21c08bc4ec23",
+      "name": "Weather Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "KmugUDlkzrUu0lBw",
+          "mode": "list",
+          "cachedResultName": "Weather - Core",
+          "cachedResultUrl": "/workflow/KmugUDlkzrUu0lBw"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "latitude": "={{ $('Build Agent Inputs').first().json.context.latitude }}",
+            "longitude": "={{ $('Build Agent Inputs').first().json.context.longitude }}",
+            "locale": "={{ $('Build Agent Inputs').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "5fe0faac-4838-42b3-abb1-527f83a8f7d4",
+      "name": "Call 'Weather - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "id": "446d6e9e-2e3b-4d68-bc52-adaea2ff8b88",
+      "name": "Join Signals",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        368
+      ],
+      "notesInFlow": true,
+      "notes": "Synchronisation join only. Collect Signals reads each branch by node name so signal identity never depends on merge ordering."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "skipped",
+              "type": "string"
+            },
+            {
+              "id": "reasonKey",
+              "name": "reasonKey",
+              "value": "={{ $json.weatherSkipReason }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a8a57c6d-a51a-419a-915b-710ed6f14d36",
+      "name": "Skip Weather",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "orch-market-ready",
+              "leftValue": "={{ $json.marketReady }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7d549f0d-cadd-4461-afc6-020524bdc82c",
+      "name": "Market Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9Yyz0Lawme5tXIYT",
+          "mode": "list",
+          "cachedResultName": "Market - Core",
+          "cachedResultUrl": "/workflow/9Yyz0Lawme5tXIYT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $('Build Agent Inputs').first().json.context.state }}",
+            "district": "={{ $('Build Agent Inputs').first().json.context.district }}",
+            "commodity": "={{ $('Build Agent Inputs').first().json.context.primaryCrop }}",
+            "locale": "={{ $('Build Agent Inputs').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "49b919f7-fa7b-4087-8a3d-172332234f56",
+      "name": "Call 'Market - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "skipped",
+              "type": "string"
+            },
+            {
+              "id": "reasonKey",
+              "name": "reasonKey",
+              "value": "={{ $json.marketSkipReason }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6309f236-ace2-431a-ad0b-afdaf7e13ef3",
+      "name": "Skip Market",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "f6lVtDQSTI6CAok5",
+          "mode": "list",
+          "cachedResultName": "Schemes - Core",
+          "cachedResultUrl": "/workflow/f6lVtDQSTI6CAok5"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $('Build Agent Inputs').first().json.context.state }}",
+            "district": "={{ $('Build Agent Inputs').first().json.context.district }}",
+            "areaAcres": "={{ $('Build Agent Inputs').first().json.context.areaAcres }}",
+            "crops": "={{ JSON.stringify($('Build Agent Inputs').first().json.context.crops) }}",
+            "locale": "={{ $('Build Agent Inputs').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "6adbe1f9-a5c4-4181-9f60-67aa3659efc6",
+      "name": "Call 'Schemes - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gathers the three agent branches into one signal bundle.\n//\n// The Merge upstream is a synchronisation join, not a data path: the\n// branches are read here by node name instead, so each signal keeps its\n// identity regardless of merge ordering or how many items a branch\n// produced.\n//\n// A branch that never executed (its readiness gate sent flow to the Skip\n// node) throws on access, which is caught and turned into a \"skipped\"\n// signal carrying the reason the gate computed. A branch that ran but\n// failed — every Call node has onError: continueRegularOutput — lands\n// here as an item that is not a valid DataResult, and becomes\n// \"unavailable\". One dead agent must never cost the farmer the whole\n// briefing.\n\nconst inputs = $('Build Agent Inputs').first().json;\n\n/** Reads one branch, never throwing. */\nconst readBranch = (nodeName) => {\n  try {\n    const item = $(nodeName).first();\n    return item && item.json ? item.json : null;\n  } catch (e) {\n    return null;\n  }\n};\n\nconst toSignal = (payload, skipReason) => {\n  if (payload === null) {\n    return skipReason\n      ? { status: \"skipped\", reasonKey: skipReason }\n      : { status: \"unavailable\", reasonKey: \"notConsulted\" };\n  }\n  if (payload.status === \"ok\" && payload.data && typeof payload.data === \"object\") {\n    return { status: \"ok\", asOf: payload.asOf || null, data: payload.data };\n  }\n  if (payload.status === \"unavailable\") {\n    // The agent's own reason is a farmer-facing sentence; the briefing\n    // renders a translated key instead, so only the fact is kept.\n    return { status: \"unavailable\", reasonKey: \"agentUnavailable\" };\n  }\n  if (payload.status === \"skipped\") {\n    return { status: \"skipped\", reasonKey: payload.reasonKey || \"skipped\" };\n  }\n  return { status: \"unavailable\", reasonKey: \"agentUnavailable\" };\n};\n\nconst weatherCalled = readBranch(\"Call 'Weather - Core'\");\nconst weatherSkipped = readBranch(\"Skip Weather\");\nconst marketCalled = readBranch(\"Call 'Market - Core'\");\nconst marketSkipped = readBranch(\"Skip Market\");\nconst schemesCalled = readBranch(\"Call 'Schemes - Core'\");\n\nconst signals = {\n  weather: weatherCalled\n    ? toSignal(weatherCalled, null)\n    : toSignal(null, (weatherSkipped && weatherSkipped.reasonKey) || inputs.weatherSkipReason),\n  market: marketCalled\n    ? toSignal(marketCalled, null)\n    : toSignal(null, (marketSkipped && marketSkipped.reasonKey) || inputs.marketSkipReason),\n  schemes: toSignal(schemesCalled, null)\n};\n\nconsole.log(\n  \"Orchestrator signals:\",\n  JSON.stringify({\n    weather: signals.weather.status,\n    market: signals.market.status,\n    schemes: signals.schemes.status\n  })\n);\n\nreturn [\n  {\n    json: {\n      signals: JSON.stringify(signals),\n      context: inputs.contextJson,\n      locale: inputs.locale\n    }\n  }\n];\n"
+      },
+      "id": "ca43dba5-7f50-4db7-8871-8ed09decb4eb",
+      "name": "Collect Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "A66udhtC979OlmrB",
+          "mode": "list",
+          "cachedResultName": "Decision - Core",
+          "cachedResultUrl": "/workflow/A66udhtC979OlmrB"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "signals": "={{ $json.signals }}",
+            "context": "={{ $json.context }}",
+            "locale": "={{ $json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "1062498b-4920-4d85-9119-5b51b37d16f0",
+      "name": "Call 'Decision - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        384
+      ]
+    }
+  ],
+  "connections": {
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Agent Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Agent Inputs": {
+      "main": [
+        [
+          {
+            "node": "Weather Ready?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Market Ready?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call 'Schemes - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather Ready?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Weather - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Weather - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join Signals": {
+      "main": [
+        [
+          {
+            "node": "Collect Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Weather": {
+      "main": [
+        [
+          {
+            "node": "Join Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Market Ready?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Market - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Market",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Market - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Signals",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Skip Market": {
+      "main": [
+        [
+          {
+            "node": "Join Signals",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Call 'Schemes - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Signals",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Collect Signals": {
+      "main": [
+        [
+          {
+            "node": "Call 'Decision - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

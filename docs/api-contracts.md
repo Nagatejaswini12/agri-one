@@ -130,8 +130,53 @@ Contract details worth stating explicitly:
 Nothing from this endpoint is persisted — it is a read-only discovery
 list, so there is no table and no migration behind it.
 
+### `POST /webhook/orchestrator`
+
+Request is the farm context the frontend already holds:
+
+```jsonc
+{
+  "farmId", "state", "district", "latitude", "longitude", "areaAcres",
+  "crops": ["Tomato", "onion"],
+  "primaryCrop": "Tomato",                 // the one crop Market prices
+  "latestSoil": { "testedOn": "2026-03-01" } | null,
+  "recentScans": [                          // <= 30 days, max 5
+    { "scanId", "cropName", "createdAt",
+      "category", "confidenceLevel", "recommendExpertConsult" }
+  ],
+  "locale": "en"
+}
+```
+
+Responds with `DataResult<FarmBriefing>`. Unauthenticated calls return
+HTTP 401 and never reach any agent.
+
+Contract details worth stating explicitly:
+
+- **Both record projections are deliberately narrow.** `latestSoil`
+  carries only `testedOn` — NPK and pH never leave the browser — and
+  `recentScans` carries no disease label. The decision rules therefore
+  *cannot* derive guidance from soil chemistry or turn a diagnosis into
+  a treatment; it is a property of the payload, not a promise. Widening
+  either is a deliberate contract change.
+- **Every action carries `{ key, params, priority, sourceAgent }`** and
+  no prose. Labels live in the locale bundles. An action with no valid
+  `sourceAgent` is dropped by the frontend normalizer — an unattributed
+  briefing line is exactly what this endpoint exists to avoid.
+- **`signals` always has all six entries**, including agents that failed
+  or were skipped. `skipped` (with a reason such as `noCoordinates`) is
+  distinct from `unavailable`: the first is something the farmer can
+  fix.
+- **One failed agent yields a partial briefing, not a failed one.**
+- **No synthesis and nothing historical.** Facts are combined and
+  prioritised; there are no cross-agent causal rules and no trends.
+- n8n reads no Supabase table for this endpoint — only the anon key to
+  verify the JWT.
+
+Nothing from this endpoint is persisted.
+
 ## Planned, in build order
 
-1. `POST /webhook/soil` — Soil Agent
-2. `POST /webhook/orchestrator` — Orchestrator (fronts Decision Agent +
-   Language/Voice Service once the above are individually proven)
+1. `POST /webhook/soil` — Soil Agent (Soil & Water is farmer-entered
+   today and needs no agent; this is for future SHC parsing)
+2. Language/Voice service — deferred to its own phase

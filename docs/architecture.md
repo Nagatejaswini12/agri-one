@@ -45,21 +45,35 @@ Scan History, Voice AI), reference: `AGRI_ONE_Plan_and_Action_Items.pdf`.
 
 1. Frontend reads/writes farm context directly against Supabase
    (row-level security scopes every query to the signed-in farmer).
-2. For an AI/agent request (question, voice, image), the frontend calls
-   the n8n Orchestrator webhook directly via `callAgentWebhook()`,
-   forwarding the farmer's Supabase JWT.
-3. Orchestrator verifies the JWT, loads farm/crop context from Supabase,
-   classifies intent, and fans out to the relevant specialized agent
-   workflow(s) in parallel where possible.
+2. Each feature page calls **its own** agent webhook via
+   `callAgentWebhook()`, forwarding the farmer's Supabase JWT. The
+   Orchestrator is one more such endpoint — the Home Dashboard's farm
+   briefing — not a gateway every page routes through. A page that needs
+   one agent calls one agent.
+3. Every webhook verifies the JWT before doing any work. **n8n reads no
+   Supabase table**: the frontend sends the farm context it already
+   holds, so no workflow carries a database credential — only the
+   publishable anon key used to verify the token.
 4. Agents call their real external data source; on failure they return
    `{ status: "unavailable", reason }`, not placeholder data.
-5. Decision Agent fuses signals into a prioritized action checklist when
-   an action recommendation applies, and populates `Advisory.disclaimer`
-   whenever the guidance is chemical/agricultural (see "Content rules"
-   below).
-6. Orchestrator translates the final payload into the farmer's selected
-   language and returns it; the frontend persists the interaction to
-   Supabase (feeds Reports / Scan History) and renders it.
+5. The Orchestrator fans out to Weather, Market and Schemes on
+   independent branches and hands the collected signals to
+   `Decision - Core`, which applies an explicit rule table. It combines
+   and prioritises facts; it does not synthesise new ones, and it emits
+   no prose (see "Phase 6").
+6. **Language is resolved in the frontend, not in n8n.** Agents return
+   stable keys — WMO codes, advisory flags, criterion keys, action keys
+   — and `react-i18next` renders them. Every agent accepts a `locale`
+   for future use, but none branches on it. This keeps four languages of
+   agricultural wording in reviewable locale files instead of behind a
+   workflow boundary.
+
+Earlier drafts of this document described a single Orchestrator that
+every request passed through, which loaded farm context from Supabase and
+translated the response. The build went the other way on all three
+points, deliberately: per-page agents keep each feature independently
+testable, keeping Supabase out of n8n keeps its blast radius small, and
+translating in the frontend keeps the wording reviewable.
 
 ## Content rules
 
@@ -338,6 +352,57 @@ farm context to run against.
   changing what it promises.
 - **No persistence, no migration.** A read-only discovery list; there is
   no `schemes` table, no bookmarks and no application tracking.
+
+## Phase 6 — Orchestrator and Decision Agent
+
+- **What it is**: the Home Dashboard's farm briefing. One call that asks
+  Weather, Market and Schemes about the active farm, adds what the
+  farmer's own soil and scan records say, and returns a prioritised,
+  fully-attributed list. There is no separate Orchestrator route and no
+  other page routes through it.
+- **It combines facts; it does not synthesise them.** Every line comes
+  from one entry in an explicit rule table (`Apply Rules`), carrying
+  `{ key, params, priority, sourceAgent }`. No LLM is involved anywhere.
+  The wording lives in the locale bundles, written once per language and
+  reviewable by a person — which is also what makes it impossible for a
+  chemical name, dosage or treatment instruction to reach a farmer.
+- **Two exclusions are structural, not just forbidden.** The frontend
+  sends `latestSoil` as `{ testedOn }` only — NPK and pH never leave the
+  browser — and `recentScans` without the disease label. So "advise from
+  soil chemistry" and "turn a diagnosis into a treatment" are things the
+  rules *cannot* do, rather than things they are asked not to. Widening
+  either projection is a deliberate contract change.
+- **No cross-agent causal rules.** Stating that rain is forecast *and*
+  that prices were reported invites a "sell before the rain" reading
+  that neither signal supports. Considered and left out.
+- **Partial results are the normal case.** Each agent sits on its own
+  branch with `onError: continueRegularOutput`, and `signals` always
+  carries an entry for all six sources including the ones that failed or
+  were skipped. `skipped` is distinct from `unavailable`: "no location
+  saved" is something the farmer can fix, "the weather service failed"
+  is not.
+- **One crop, named.** Market is per-commodity, so the briefing prices
+  exactly one crop, shows which, and offers a selector when the farm has
+  several — rather than implying it covers everything grown.
+- **n8n**: `Orchestrator API` (`rclCnv6rxWemQpeF`) verifies the JWT;
+  `Orchestrator - Core` (`ydzxQDVZWs1NkB9y`) fans out and collects;
+  `Decision - Core` (`A66udhtC979OlmrB`) applies the rules. Cores are
+  called directly — the JWT is verified once at the edge, so there is no
+  second HTTP hop. Verified live: three rejected calls produced three
+  `Orchestrator API` executions and zero `Orchestrator - Core` ones.
+- **Fan-out is about failure isolation, not concurrency.** n8n walks
+  branches one after another under `executionOrder: v1`, so the win is
+  one round trip and independent failure, not wall-clock parallelism.
+  Measured 1.5–4.7s end to end. The briefing card loads independently so
+  the rest of the Dashboard renders immediately.
+- **The rule table is reviewed as source.** `Apply Rules` is versioned
+  readably under `services/n8n/workflows/src/decision/`, and
+  `scripts/verify-decision-rules.mjs` proves it is what n8n runs, checks
+  every emitted key has a label in all four languages, and audits those
+  labels for chemical names and treatment verbs.
+- **No persistence, no migration.** The briefing is recomputed per view.
+  Checklist state is not stored; `Advisory`/`ActionItem` remain
+  unbacked types and should be revisited when Reports is built.
 
 ## Hosting (Phase 8)
 

@@ -162,7 +162,7 @@
     "switchFarm": "Switch farm",
     "soilSummary": "Soil",
     "viewSoil": "View soil data",
-    "agentsComingSoon": "Market, pest and scheme guidance will appear here once those agents are connected in a later phase. Weather and crop diagnosis are already available in their own sections."
+    "agentsComingSoon": "Pest alerts, buyers and reports are not connected yet. Voice assistance is planned for a later phase."
   },
   "scanHistory": {
     "empty": "No scans yet for this farm.",
@@ -306,6 +306,70 @@
       "projectProposal": "You must submit a project proposal",
       "itemNotified": "The equipment or work must be on the notified list",
       "stateMatch": "Your farm is in {{state}}"
+    }
+  },
+  "decision": {
+    "title": "Farm briefing",
+    "loading": "Preparing your briefing…",
+    "loadError": "Couldn't prepare your farm briefing. Please try again.",
+    "disclaimer": "This brings together what the other sections already say about this farm. It is information, not agricultural advice — check with a local expert before acting.",
+    "nothingToFlag": "Nothing needs your attention on this farm right now.",
+    "signalsUsed": "Signals used",
+    "signalOk": "checked",
+    "generatedAt": "Prepared at {{time}}",
+    "marketCropLabel": "Market prices for",
+    "marketCropNote": "this crop only",
+    "actionUnknown": "See the linked section for details.",
+    "group": {
+      "high": "Needs attention",
+      "medium": "Worth knowing",
+      "low": "For your information"
+    },
+    "signal": {
+      "weather": "Weather",
+      "market": "Market",
+      "schemes": "Schemes",
+      "diagnosis": "Crop scans",
+      "soil": "Soil",
+      "farm": "Farm record"
+    },
+    "status": {
+      "ok": "Available",
+      "skipped": "Not checked",
+      "unavailable": "Unavailable"
+    },
+    "signalReason": {
+      "noCoordinates": "no location saved",
+      "noDistrict": "no district saved",
+      "noCrop": "no crop selected",
+      "noRecentScans": "no scans in the last 30 days",
+      "noSoilRecord": "no soil test recorded",
+      "agentUnavailable": "could not be reached",
+      "notConsulted": "not consulted",
+      "skipped": "not checked"
+    },
+    "action": {
+      "heavyRainExpected": "Heavy rain is in the forecast for the next 3 days.",
+      "thunderstormExpected": "Thunderstorms are in the forecast for the next 3 days.",
+      "extremeHeat": "Very high temperatures are in the forecast.",
+      "highWind": "Strong winds are in the forecast.",
+      "noRainNext3Days": "No rain is forecast for the next 3 days.",
+      "rainExpectedToday": "Rain is forecast today.",
+      "marketPriceReported": "{{crop}} was reported at ₹{{price}} per quintal at {{market}} on {{reportedOn}}.",
+      "marketSpread": "Reported {{crop}} prices today range from ₹{{low}} at {{lowMarket}} to ₹{{high}} at {{highMarket}}.",
+      "recentDiagnosisNeedsExpert_one": "A recent {{crop}} scan was flagged for expert consultation.",
+      "recentDiagnosisNeedsExpert_other": "{{count}} recent {{crop}} scans were flagged for expert consultation.",
+      "recentDiagnosisInconclusive_one": "A recent crop scan was inconclusive.",
+      "recentDiagnosisInconclusive_other": "{{count}} recent crop scans were inconclusive.",
+      "schemesMatched_one": "1 government scheme matches what you've entered. Its conditions still need checking.",
+      "schemesMatched_other": "{{count}} government schemes match what you've entered. Their conditions still need checking.",
+      "schemesStateUnknown_one": "1 state scheme could not be checked because this farm has no state saved.",
+      "schemesStateUnknown_other": "{{count}} state schemes could not be checked because this farm has no state saved.",
+      "soilDataMissing": "No soil test is recorded for this farm.",
+      "soilDataStale": "The last soil test recorded was on {{testedOn}}.",
+      "farmLocationMissing": "This farm has no location saved, so weather could not be checked.",
+      "farmDistrictMissing": "This farm has no state and district saved, so market prices could not be checked.",
+      "noCropsRecorded": "No crops are recorded for this farm, so market prices could not be checked."
     }
   }
 }

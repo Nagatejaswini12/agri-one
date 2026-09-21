@@ -6,6 +6,7 @@ import { useFarms } from "@/modules/farms/hooks";
 import { useSoilRecords } from "@/modules/soil-water/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
+import { Briefing } from "@/modules/dashboard/Briefing";
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -79,6 +80,10 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </section>
+
+      {/* The briefing loads independently, so the farm and soil cards
+          above render immediately rather than waiting on three agents. */}
+      {activeFarm ? <Briefing farm={activeFarm} /> : null}
 
       {activeFarm ? (
         <section className="mt-6">

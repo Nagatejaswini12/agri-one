@@ -346,6 +346,78 @@ export interface SchemeMatchResult {
   matches: SchemeMatch[];
 }
 
+export type DecisionPriority = "high" | "medium" | "low";
+
+/** Which agent or record a briefing line is traceable back to. */
+export type DecisionSourceAgent =
+  | "weather"
+  | "market"
+  | "schemes"
+  | "diagnosis"
+  | "soil"
+  | "farm";
+
+/**
+ * One line of the farm briefing.
+ *
+ * `key` maps to a `decision.action.<key>` label and `params` fills its
+ * placeholders, so the text is written once per language in the locale
+ * bundles and never generated. The Decision Agent emits no prose at all:
+ * that is what keeps four languages of agricultural wording reviewable,
+ * and what makes it structurally impossible for a chemical name, dosage
+ * or treatment instruction to reach a farmer — see docs/architecture.md
+ * "Phase 6".
+ *
+ * `sourceAgent` is mandatory because a briefing line with no traceable
+ * origin is exactly the kind of confident-sounding claim this module
+ * exists to avoid.
+ */
+export interface DecisionAction {
+  key: string;
+  params: Record<string, string | number> | null;
+  priority: DecisionPriority;
+  sourceAgent: DecisionSourceAgent;
+}
+
+/**
+ * Per-signal outcome. `skipped` is distinct from `unavailable` on
+ * purpose: "this farm has no coordinates saved" and "the weather service
+ * failed" are different facts, and the farmer can act on the first.
+ */
+export interface SignalStatus {
+  status: "ok" | "unavailable" | "skipped";
+  /** Maps to `decision.signalReason.<key>`; null when status is "ok". */
+  reasonKey: string | null;
+  asOf: string | null;
+}
+
+/**
+ * The Orchestrator's payload: a prioritised, fully-attributed view of
+ * what the other agents currently say about one farm.
+ *
+ * It combines and orders facts; it does not synthesise new ones. There
+ * are deliberately no cross-agent causal rules — stating that rain is
+ * forecast *and* that prices were reported invites a "sell before the
+ * rain" reading that neither signal supports.
+ *
+ * `signals` always carries an entry for every agent, including the ones
+ * that failed or were skipped, so a shorter checklist is never silently
+ * shorter.
+ */
+export interface FarmBriefing {
+  farmId: string;
+  generatedAt: string;
+  /**
+   * The single crop the market signal is about. A farm can have several;
+   * the briefing names this one explicitly rather than implying the
+   * market line covers them all.
+   */
+  primaryCrop: string | null;
+  signals: Record<DecisionSourceAgent, SignalStatus>;
+  actions: DecisionAction[];
+  disclaimer: string | null;
+}
+
 /**
  * Every live-data module response must be one of these two shapes —
  * never a silently-defaulted value when a source is unavailable.

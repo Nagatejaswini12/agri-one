@@ -178,6 +178,87 @@ as a user token. `Market - Core` recorded **zero** executions across all
 three — its latest execution id (192) predates the first rejection (193),
 confirming the false branch terminates before Core.
 
+## Orchestrator and Decision Agent (Phase 6)
+
+| Workflow | ID | Role |
+|---|---|---|
+| `Orchestrator API` | `rclCnv6rxWemQpeF` | Public `POST /webhook/orchestrator`. Verifies the Supabase JWT, then calls Core. Exported as `orchestrator-api.json`. |
+| `Orchestrator - Core` | `ydzxQDVZWs1NkB9y` | Fans out to Weather, Market and Schemes, collects the signals. Exported as `orchestrator-core.json`. |
+| `Decision - Core` | `A66udhtC979OlmrB` | Applies the rule table, builds the briefing. Exported as `decision-core.json`. |
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        ▼
+                            Call 'Orchestrator - Core'
+
+Core Trigger → Build Agent Inputs
+                  ├─ Weather Ready? ─true→ Call 'Weather - Core' ─┐
+                  │                 └false→ Skip Weather ─────────┤
+                  ├─ Market Ready?  ─true→ Call 'Market - Core' ──┤→ Join Signals
+                  │                 └false→ Skip Market ──────────┤   (append, 3)
+                  └─ Call 'Schemes - Core' ────────────────────────┘
+                                                                   ▼
+                                    Collect Signals → Call 'Decision - Core'
+
+Decision Trigger → Parse Signals → Signals Usable? ─false→ Build Unavailable Result
+                                        │ true
+                                        └→ Apply Rules → Build Briefing
+```
+
+### Three node choices that are easy to break by "simplifying"
+
+- **Join Signals is a synchronisation join, not a data path.**
+  `Collect Signals` reads each branch by node name (`$('Call Weather -
+  Core')`) inside try/catch, so signal identity never depends on merge
+  ordering or item counts. A branch that never executed throws, is
+  caught, and becomes a `skipped` signal carrying the reason its gate
+  computed.
+- **Readiness gates exist only where the call is guaranteed useless.**
+  Calling Weather with no coordinates would burn a round trip to learn
+  what the farm record already said, and would report "the weather
+  service failed" when the truth is "this farm has no location saved" —
+  a difference the farmer can act on.
+- **Every `Call … - Core` has `onError: continueRegularOutput`**, so one
+  dead agent produces a partial briefing rather than a 500.
+
+**Fan-out is failure isolation, not concurrency.** n8n walks branches one
+after another under `executionOrder: v1`; the win is a single round trip
+and independent failure. Measured 1.5–4.7s end to end.
+
+### Why the briefing cannot give agronomic advice
+
+`Apply Rules` is an explicit table — no LLM, no prose, no cross-agent
+causal rules, nothing historical. Each rule emits only
+`{ key, params, priority, sourceAgent }`; the wording lives in the locale
+bundles.
+
+Two of the exclusions are structural rather than merely forbidden,
+because of what the frontend sends:
+
+- `latestSoil` is `{ testedOn }` only. NPK and pH never leave the
+  browser, so no rule can read soil chemistry into guidance.
+- `recentScans` carries no disease label. The rules can restate that the
+  Crop Diagnosis Agent asked for an expert, and nothing more.
+
+Edit the readable sources under `services/n8n/workflows/src/decision/`
+and `src/orchestrator/`, then push, republish, re-export, and run
+`node scripts/verify-decision-rules.mjs` — it proves the exported
+`jsCode` is byte-identical to those files, checks every emitted action
+key has a label in all four languages, and audits those labels for
+chemical names and treatment verbs.
+
+### Verified against the live instance
+
+Negative cases (2026-09-21), all HTTP 401
+`{"status":"unavailable","reason":"Authentication required."}`: no
+`Authorization` header, an invalid JWT, and the publishable anon key used
+as a user token — with **zero** `Orchestrator - Core` executions.
+Authenticated runs confirmed: full context; no coordinates (weather
+`skipped: noCoordinates`, others still run); no district (market
+`skipped: noDistrict`); no crops (market `skipped: noCrop`); crop
+switched; and no soil or scans.
+
 ## Government Schemes Agent (Phase 5)
 
 | Workflow | ID | Role |

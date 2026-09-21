@@ -1,0 +1,224 @@
+{
+  "name": "Orchestrator API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "orchestrator",
+        "responseMode": "responseNode"
+      },
+      "id": "902954e7-1dda-4f16-88fc-a715e2219491",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://czswdbfgfjteajfvwyid.supabase.co/auth/v1/user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SET_IN_N8N_UI"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.headers.authorization }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "188e3941-cd76-4091-894a-23854aaa98d1",
+      "name": "Verify Supabase Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        96
+      ],
+      "notesInFlow": true,
+      "notes": "Sends the publishable anon key as apikey plus the caller's Authorization header verbatim. Supabase checks signature, expiry and session validity, so n8n needs no service-role key and reads no table. neverError keeps a 401 on the normal output so the IF can route it."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "orchestrator-auth-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "19a24019-e85f-43ac-8d2c-6c0e0c9b8c30",
+      "name": "Authenticated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ydzxQDVZWs1NkB9y",
+          "mode": "list",
+          "cachedResultName": "Orchestrator - Core",
+          "cachedResultUrl": "/workflow/ydzxQDVZWs1NkB9y"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "farmId": "={{ $('Webhook').first().json.body.farmId }}",
+            "state": "={{ $('Webhook').first().json.body.state }}",
+            "district": "={{ $('Webhook').first().json.body.district }}",
+            "latitude": "={{ $('Webhook').first().json.body.latitude }}",
+            "longitude": "={{ $('Webhook').first().json.body.longitude }}",
+            "areaAcres": "={{ $('Webhook').first().json.body.areaAcres }}",
+            "crops": "={{ JSON.stringify($('Webhook').first().json.body.crops || []) }}",
+            "primaryCrop": "={{ $('Webhook').first().json.body.primaryCrop }}",
+            "latestSoil": "={{ JSON.stringify($('Webhook').first().json.body.latestSoil || null) }}",
+            "recentScans": "={{ JSON.stringify($('Webhook').first().json.body.recentScans || []) }}",
+            "locale": "={{ $('Webhook').first().json.body.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "aa248553-e7b2-4270-96d8-c3dff3d82c4b",
+      "name": "Call 'Orchestrator - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "Farm context is forwarded exactly as the frontend supplied it. n8n reads no Supabase table anywhere in this feature."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "523021c5-3957-44d0-a49b-5a0daf0230a0",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: \"unavailable\", reason: \"Authentication required.\" }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d89d0d85-60c3-4246-baeb-612989cf9def",
+      "name": "Respond Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        192
+      ],
+      "notesInFlow": true,
+      "notes": "Terminates before Call Orchestrator - Core, so an unauthenticated caller never reaches any agent."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Supabase Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Supabase Token": {
+      "main": [
+        [
+          {
+            "node": "Authenticated?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authenticated?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Orchestrator - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Orchestrator - Core'": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "name": "Decision - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "signals"
+            },
+            {
+              "name": "context"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "be7d9b7c-f531-460e-9166-8780a300758f",
+      "name": "Decision Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parses the signal bundle the Orchestrator collected.\n//\n// Every agent runs outside this workflow and can fail independently, so\n// nothing here assumes a signal arrived or that it arrived well-formed.\n// An unreadable signal becomes \"unavailable\" with a reason key rather\n// than being dropped: a farmer must be able to see that the weather was\n// not consulted, not just notice the briefing looks short.\n\nconst input = $input.first() ? $input.first().json : {};\n\nconst parseJson = (v, fallback) => {\n  if (v && typeof v === \"object\") return v;\n  if (typeof v === \"string\" && v.trim() !== \"\") {\n    try {\n      return JSON.parse(v);\n    } catch (e) {\n      return fallback;\n    }\n  }\n  return fallback;\n};\n\nconst signals = parseJson(input.signals, null);\nconst context = parseJson(input.context, null);\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\n// Without a context we cannot say which farm this is about, and an\n// unattributed briefing is worse than none.\nconst usable = !!(signals && typeof signals === \"object\" && context && text(context.farmId));\n\nreturn [\n  {\n    json: {\n      usable,\n      locale: text(input.locale) || \"en\",\n      context: context || {},\n      signals: signals || {}\n    }\n  }\n];\n"
+      },
+      "id": "2bee108d-4a02-40bf-8b64-4c2314aaf9a6",
+      "name": "Parse Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "decision-signals-usable",
+              "leftValue": "={{ $json.usable }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0dd6d79e-b08f-4742-87d0-6117301cf3fb",
+      "name": "Signals Usable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------\n// THE DECISION RULE TABLE.\n//\n// Every line of the farm briefing comes from exactly one rule below.\n// Rules are explicit, ordered and auditable; nothing here is generated,\n// inferred by a model, or phrased at runtime. A rule may only emit\n// { key, params, priority, sourceAgent } — the wording lives in the\n// locale bundles, written once per language and reviewable by a person.\n//\n// HARD EXCLUSIONS, enforced by the shape of the data this node receives\n// as much as by these rules:\n//\n//  1. No chemical name, product, dosage, or treatment instruction. Ever.\n//     There is no rule that could produce one, and RULE_AUDIT below is\n//     asserted in the unit tests.\n//  2. No agronomic guidance derived from soil chemistry. The frontend\n//     sends only `latestSoil.testedOn` — NPK and pH never leave the\n//     browser, so \"advise from soil values\" is impossible rather than\n//     merely forbidden.\n//  3. No guidance derived from a diagnosis label. The frontend sends\n//     only category / confidenceLevel / recommendExpertConsult, never\n//     the disease name, so rule 9 can restate the agent's own\n//     recommendation and nothing more.\n//  4. No cross-agent causal rules. Stating that rain is forecast AND\n//     that prices were reported invites a \"sell before the rain\"\n//     reading that neither signal supports. Deliberately excluded.\n//  5. Nothing historical. No trends, no comparisons to last week.\n//\n// Ordering is priority tier, then the declared index below, so the same\n// inputs always produce the same order.\n// ---------------------------------------------------------------------\n\nconst SPREAD_THRESHOLD = 0.15; // mandi spread worth naming: 15% of the lowest modal\nconst SCAN_WINDOW_DAYS = 30;\nconst SOIL_STALE_DAYS = 365;\n\nconst WEATHER_FLAG_RULES = [\n  { flag: \"heavy_rain_expected\", key: \"heavyRainExpected\", priority: \"high\" },\n  { flag: \"thunderstorm_expected\", key: \"thunderstormExpected\", priority: \"high\" },\n  { flag: \"extreme_heat\", key: \"extremeHeat\", priority: \"high\" },\n  { flag: \"high_wind\", key: \"highWind\", priority: \"medium\" },\n  { flag: \"no_rain_next_3_days\", key: \"noRainNext3Days\", priority: \"medium\" },\n  { flag: \"rain_expected_today\", key: \"rainExpectedToday\", priority: \"low\" }\n];\n\nconst PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };\n\nconst data = $input.first().json;\nconst context = data.context || {};\nconst signals = data.signals || {};\n\nconst num = (v) => (typeof v === \"number\" && Number.isFinite(v) ? v : null);\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\nconst daysSince = (iso) => {\n  const s = text(iso);\n  if (!s) return null;\n  const then = Date.parse(s.length === 10 ? s + \"T00:00:00Z\" : s);\n  if (Number.isNaN(then)) return null;\n  return Math.floor((Date.now() - then) / 86400000);\n};\n\n/** A signal counts as usable only when the agent itself said \"ok\". */\nconst ok = (name) => {\n  const s = signals[name];\n  return s && s.status === \"ok\" && s.data && typeof s.data === \"object\" ? s.data : null;\n};\n\nconst actions = [];\nlet index = 0;\nconst emit = (key, params, priority, sourceAgent) => {\n  actions.push({ key, params: params || null, priority, sourceAgent, _i: index++ });\n};\n\n// --- weather (rules 1-6) ---------------------------------------------\n// The agent already emits descriptive threshold flags. These are\n// restated and prioritised; nothing is added to them.\nconst weather = ok(\"weather\");\nif (weather) {\n  const flags = Array.isArray(weather.advisories) ? weather.advisories : [];\n  for (const rule of WEATHER_FLAG_RULES) {\n    if (flags.indexOf(rule.flag) !== -1) emit(rule.key, null, rule.priority, \"weather\");\n  }\n}\n\n// --- market (rules 7-8) ----------------------------------------------\nconst market = ok(\"market\");\nif (market) {\n  const quotes = Array.isArray(market.quotes) ? market.quotes : [];\n  const priced = quotes.filter((q) => q && num(q.modalPrice) !== null);\n  const crop = text(market.commodity) || text(context.primaryCrop);\n\n  if (priced.length > 0 && crop) {\n    let low = priced[0];\n    let high = priced[0];\n    for (const q of priced) {\n      if (num(q.modalPrice) < num(low.modalPrice)) low = q;\n      if (num(q.modalPrice) > num(high.modalPrice)) high = q;\n    }\n\n    emit(\n      \"marketPriceReported\",\n      {\n        crop,\n        price: num(high.modalPrice),\n        market: text(high.market) || \"\",\n        district: text(market.district) || \"\",\n        reportedOn: text(market.latestReportedOn) || \"\"\n      },\n      \"low\",\n      \"market\"\n    );\n\n    // Naming the spread is a fact about today's reported prices. It is\n    // not advice to go to a particular mandi: transport, quantity and\n    // relationships are things this system knows nothing about.\n    const lowP = num(low.modalPrice);\n    const highP = num(high.modalPrice);\n    if (lowP !== null && highP !== null && lowP > 0 && (highP - lowP) / lowP >= SPREAD_THRESHOLD) {\n      emit(\n        \"marketSpread\",\n        {\n          crop,\n          low: lowP,\n          high: highP,\n          lowMarket: text(low.market) || \"\",\n          highMarket: text(high.market) || \"\"\n        },\n        \"medium\",\n        \"market\"\n      );\n    }\n  }\n}\n\n// --- diagnosis (rules 9-10) ------------------------------------------\n// Restates what the Crop Diagnosis Agent itself flagged. The disease\n// label never reaches this workflow, so no treatment can be implied.\nconst scans = Array.isArray(context.recentScans) ? context.recentScans : [];\nconst recent = scans.filter((s) => {\n  const age = daysSince(s && s.createdAt);\n  return age !== null && age <= SCAN_WINDOW_DAYS;\n});\n\nconst needsExpert = recent.filter((s) => s.recommendExpertConsult === true);\nif (needsExpert.length > 0) {\n  const newest = needsExpert[0];\n  emit(\n    \"recentDiagnosisNeedsExpert\",\n    { crop: text(newest.cropName) || \"\", count: needsExpert.length },\n    \"high\",\n    \"diagnosis\"\n  );\n}\n\nconst inconclusive = recent.filter(\n  (s) => s.category === \"inconclusive\" && s.recommendExpertConsult !== true\n);\nif (inconclusive.length > 0) {\n  emit(\"recentDiagnosisInconclusive\", { count: inconclusive.length }, \"low\", \"diagnosis\");\n}\n\n// --- schemes (rules 11-12) -------------------------------------------\n// \"matched\" means nothing recorded contradicts the scheme. It is never\n// eligibility, and the label the farmer reads says so.\nconst schemes = ok(\"schemes\");\nif (schemes) {\n  const matches = Array.isArray(schemes.matches) ? schemes.matches : [];\n  const matched = matches.filter((m) => m && m.group === \"matched\");\n  if (matched.length > 0) emit(\"schemesMatched\", { count: matched.length }, \"medium\", \"schemes\");\n\n  const skipped = num(schemes.stateSchemesSkipped);\n  if (skipped !== null && skipped > 0) {\n    emit(\"schemesStateUnknown\", { count: skipped }, \"low\", \"schemes\");\n  }\n}\n\n// --- soil (rules 13-14) ----------------------------------------------\n// Only the presence and age of a record. No NPK, no pH, no guidance:\n// reading soil chemistry into advice is a job for an agronomist.\nconst soil = context.latestSoil;\nif (!soil || !text(soil.testedOn)) {\n  emit(\"soilDataMissing\", null, \"low\", \"soil\");\n} else {\n  const age = daysSince(soil.testedOn);\n  if (age !== null && age > SOIL_STALE_DAYS) {\n    emit(\"soilDataStale\", { testedOn: text(soil.testedOn), years: Math.floor(age / 365) }, \"low\", \"soil\");\n  }\n}\n\n// --- farm record completeness (rules 15-17) --------------------------\n// Each of these is the reason a signal above could not run, stated where\n// the farmer can act on it.\nif (num(context.latitude) === null || num(context.longitude) === null) {\n  emit(\"farmLocationMissing\", null, \"low\", \"farm\");\n}\nif (!text(context.state) || !text(context.district)) {\n  emit(\"farmDistrictMissing\", null, \"low\", \"farm\");\n}\nconst crops = Array.isArray(context.crops) ? context.crops.filter((c) => text(c)) : [];\nif (crops.length === 0) {\n  emit(\"noCropsRecorded\", null, \"low\", \"farm\");\n}\n\nactions.sort((a, b) => {\n  const p = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];\n  return p !== 0 ? p : a._i - b._i;\n});\n\nreturn [\n  {\n    json: {\n      context,\n      signals,\n      locale: data.locale,\n      actions: actions.map((a) => ({\n        key: a.key,\n        params: a.params,\n        priority: a.priority,\n        sourceAgent: a.sourceAgent\n      }))\n    }\n  }\n];\n"
+      },
+      "id": "0c0b1a54-7fe5-4562-9a28-26c9f2832c60",
+      "name": "Apply Rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "notesInFlow": true,
+      "notes": "The full rule table. Explicit, ordered, auditable. No LLM, no prose, no chemical names or dosages, no cross-agent causal rules, nothing historical. Emits only { key, params, priority, sourceAgent }; wording lives in the locale bundles."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Wraps the rule output in the DataResult contract\n// (packages/shared-types). generatedAt is when this ran; each signal\n// carries its own asOf, because the agents were consulted at slightly\n// different moments and one \"as of\" for all of them would be a fiction.\n//\n// Every agent gets an entry in `signals` whether or not it succeeded.\n// A briefing that quietly omits the agents that failed would look like a\n// complete picture of the farm when it is not.\n\nconst SOURCE = \"agri-one-orchestrator\";\nconst AGENTS = [\"weather\", \"market\", \"schemes\", \"diagnosis\", \"soil\", \"farm\"];\n\nconst data = $input.first().json;\nconst context = data.context || {};\nconst raw = data.signals || {};\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\nconst statusOf = (name) => {\n  const s = raw[name];\n  if (!s || typeof s !== \"object\") {\n    return { status: \"unavailable\", reasonKey: \"notConsulted\", asOf: null };\n  }\n  if (s.status === \"ok\") {\n    return { status: \"ok\", reasonKey: null, asOf: text(s.asOf) };\n  }\n  if (s.status === \"skipped\") {\n    return { status: \"skipped\", reasonKey: text(s.reasonKey) || \"skipped\", asOf: null };\n  }\n  return { status: \"unavailable\", reasonKey: text(s.reasonKey) || \"agentUnavailable\", asOf: null };\n};\n\nconst signals = {};\nfor (const a of AGENTS) signals[a] = statusOf(a);\n\n// diagnosis and soil are read from what the frontend supplied rather\n// than from an agent call, so their status is about the farmer's own\n// records, not about a service being up.\nconst scans = Array.isArray(context.recentScans) ? context.recentScans : [];\nsignals.diagnosis = scans.length > 0\n  ? { status: \"ok\", reasonKey: null, asOf: text(scans[0].createdAt) }\n  : { status: \"skipped\", reasonKey: \"noRecentScans\", asOf: null };\n\nconst soil = context.latestSoil;\nsignals.soil = soil && text(soil.testedOn)\n  ? { status: \"ok\", reasonKey: null, asOf: text(soil.testedOn) }\n  : { status: \"skipped\", reasonKey: \"noSoilRecord\", asOf: null };\n\nsignals.farm = { status: \"ok\", reasonKey: null, asOf: null };\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: SOURCE,\n      data: {\n        farmId: text(context.farmId),\n        generatedAt: new Date().toISOString(),\n        primaryCrop: text(context.primaryCrop),\n        signals,\n        actions: Array.isArray(data.actions) ? data.actions : [],\n        // Carried as a key, not prose, so it reads in the farmer's own\n        // language like everything else on the card.\n        disclaimer: \"decision.disclaimer\"\n      }\n    }\n  }\n];\n"
+      },
+      "id": "a8033664-581a-47b7-877a-a5067870cb1a",
+      "name": "Build Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The signal bundle or the farm context was unreadable, so there is\n// nothing truthful to brief on. The farmer gets a plain message; the\n// detail goes to the execution log so the failure stays diagnosable.\n\nconst data = $input.first() ? $input.first().json : {};\nconsole.log(\n  \"Briefing context unusable:\",\n  JSON.stringify({\n    hasSignals: !!data.signals,\n    hasContext: !!data.context,\n    farmId: data.context ? data.context.farmId : null\n  })\n);\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      reason: \"Your farm briefing could not be prepared right now. Please try again.\"\n    }\n  }\n];\n"
+      },
+      "id": "47a0d644-d074-4eb9-af49-3c593e34748b",
+      "name": "Build Unavailable Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Decision Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Signals": {
+      "main": [
+        [
+          {
+            "node": "Signals Usable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Signals Usable?": {
+      "main": [
+        [
+          {
+            "node": "Apply Rules",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Rules": {
+      "main": [
+        [
+          {
+            "node": "Build Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
