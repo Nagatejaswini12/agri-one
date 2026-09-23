@@ -175,8 +175,62 @@ Contract details worth stating explicitly:
 
 Nothing from this endpoint is persisted.
 
+### `POST /webhook/chat`
+
+Request is the farmer's question plus the farm context the frontend
+already holds:
+
+```jsonc
+{
+  "text": "what is the price of tomato",
+  "farmId", "state", "district", "latitude", "longitude", "areaAcres",
+  "crops": ["Tomato", "onion"],
+  "primaryCrop": "Tomato",
+  "latestSoil": {                        // the farmer's recorded values
+    "soilType", "ph", "nitrogen", "phosphorus",
+    "potassium", "organicCarbon", "testedOn"
+  } | null,
+  "recentScans": [                        // <= 30 days, max 5
+    { "scanId", "cropName", "createdAt",
+      "category", "confidenceLevel", "recommendExpertConsult" }
+  ],
+  "locale": "en"
+}
+```
+
+Responds with `DataResult<ChatAnswer>`. Unauthenticated calls return HTTP
+401 and never reach any agent.
+
+Contract details worth stating explicitly:
+
+- **There is no free-text answer path.** `ChatAnswer` carries only
+  `answerKey`, `params`, `sources` and `signals`; the frontend renders
+  `chat.answer.<answerKey>`. A payload containing prose would be dropped
+  by the normalizer, not shown.
+- **Nine intents, a closed enum.** Routing is deterministic multilingual
+  keyword matching — no LLM. A misclassification answers the wrong
+  *true* question; it cannot invent a fact.
+- **`diagnosis.recent` never triggers an inference.** There is no route
+  from `Chat - Core` to the Crop Diagnosis workflow at all, and the
+  scan projection carries **no disease label** — so the assistant can
+  restate that an expert was recommended, and nothing more.
+- **Soil values are reported, never interpreted.** `soil.status` reads
+  back what the farmer recorded, using the same labels as Soil & Water.
+  No rule compares a reading to a threshold and no template turns one
+  into a fertiliser recommendation or dosage.
+- **`schemes.list` reports the matched count** and that conditions remain
+  to be checked. Never eligibility.
+- **A param absent from the source is never substituted.** The soil
+  answer lists only the values actually recorded.
+- An unavailable agent yields `answerKey: "sourceUnavailable"` naming
+  the source, never a guess.
+- n8n reads no Supabase table for this endpoint.
+
+Nothing is persisted — chat history is session-only React state.
+
 ## Planned, in build order
 
 1. `POST /webhook/soil` — Soil Agent (Soil & Water is farmer-entered
    today and needs no agent; this is for future SHC parsing)
-2. Language/Voice service — deferred to its own phase
+2. Hosted Indic speech (Bhashini / Sarvam) behind the existing
+   `SpeechProvider` interface — v1 uses browser-native speech only

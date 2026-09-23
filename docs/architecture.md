@@ -404,6 +404,61 @@ farm context to run against.
   Checklist state is not stored; `Advisory`/`ActionItem` remain
   unbacked types and should be revisited when Reports is built.
 
+## Phase 7 — Multilingual chat and voice assistant
+
+- **What it is**: the `/voice-ai` page, reached from the floating mic.
+  The farmer types or speaks a question in English, Tamil, Telugu or
+  Hindi and gets an answer in that same language, as text and — where
+  the device has a voice — read aloud.
+- **It is not a general agricultural advice bot.** Nine intents, a
+  closed enum, each answered by the one agent that owns it: Weather,
+  Market and Schemes Cores, the Orchestrator for a briefing summary, and
+  the frontend-supplied context for scans, soil and farm details.
+- **No LLM, and none needed.** Routing is deterministic multilingual
+  keyword matching against a table versioned in the repo. The worst a
+  misclassification can do is answer the wrong *true* question. An LLM
+  classifier could sit ahead of `Classify Intent`, emitting the same
+  `{intent, cropSlot}` shape with this as its fallback — but it would
+  never be allowed to write an answer.
+- **There is no free-text answer path at all.** `Chat - Core` emits
+  `answerKey` + `params`; `renderAnswer` composes the sentence from the
+  locale bundles. That is the same "keys not prose" discipline as the
+  Decision Agent, and it is what makes a chemical name, a dosage or a
+  treatment instruction impossible to produce in four languages at once.
+- **Soil values are reported, not interpreted.** The projection carries
+  the farmer's recorded `soilType`, `ph`, NPK and `organicCarbon`, so
+  `soil.status` can read them back as facts using the same labels the
+  Soil & Water page uses. No rule compares a reading to a threshold —
+  that comparison is precisely where a report would become a
+  prescription. Fields the farmer left blank are simply not listed.
+- **The scan projection carries no disease label**, so the assistant can
+  restate that the Crop Diagnosis Agent recommended an expert, and
+  nothing more. There is no route from `Chat - Core` to the diagnosis
+  workflow, so chat can never trigger an inference.
+- **Voice is a progressive enhancement, structurally.** The
+  `SpeechProvider` interface (`lib/speech/`) is implemented in v1 by the
+  browser's Web Speech API — no key, no cost, nothing to fail
+  server-side. The mic button renders only when a recognition engine
+  exists; a missing voice for the active language produces a visible
+  notice rather than silence; text chat never depends on either. A
+  hosted Indic provider (Bhashini, Sarvam) would be a second
+  implementation of the same interface with no UI change.
+- **Spoken and written answers cannot diverge**: `renderAnswer` produces
+  one string, which is both displayed and handed to `speechSynthesis`.
+- **Language follows the app.** `useAppStore.language` maps to `en-IN`,
+  `ta-IN`, `te-IN`, `hi-IN`; the assistant holds no preference of its
+  own.
+- **n8n**: `Chat API` (`8yH5ATGCbdmRmhE4`) verifies the JWT;
+  `Chat - Core` (`tlmAbOaRU2ILqRil`) classifies and routes. Verified
+  live: three rejected calls produced zero `Chat - Core` executions, and
+  all nine intents answer correctly in all four languages.
+- **No persistence, no migration.** Chat history is session-only React
+  state.
+- `scripts/verify-chat-answers.mjs` proves the readable node sources are
+  what n8n runs, that every emitted `answerKey` has a label in all four
+  languages, and audits those labels for products, doses and eligibility
+  claims.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.

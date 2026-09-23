@@ -1,0 +1,779 @@
+{
+  "name": "Chat - Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            },
+            {
+              "name": "farmId"
+            },
+            {
+              "name": "state"
+            },
+            {
+              "name": "district"
+            },
+            {
+              "name": "latitude"
+            },
+            {
+              "name": "longitude"
+            },
+            {
+              "name": "areaAcres"
+            },
+            {
+              "name": "crops"
+            },
+            {
+              "name": "primaryCrop"
+            },
+            {
+              "name": "latestSoil"
+            },
+            {
+              "name": "recentScans"
+            },
+            {
+              "name": "locale"
+            }
+          ]
+        }
+      },
+      "id": "c6c8d0ab-7d12-4f82-aa2c-386e3150b7fc",
+      "name": "Chat Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalises the chat request and narrows it to exactly what the\n// supported intents need.\n//\n// n8n reads no Supabase table: the farm context arrives in the request,\n// already scoped to the signed-in farmer by row-level security on the\n// frontend's own queries.\n//\n// The soil projection carries the farmer's recorded values because\n// `soil.status` reports them back as facts. It never becomes advice:\n// no rule or template may turn a nutrient reading into a fertiliser\n// recommendation, a dosage or a treatment — see node-build-answer.js.\n//\n// The scan projection deliberately carries NO disease label, only what\n// `diagnosis.recent` needs. The label never reaches this workflow, so\n// the chatbot cannot turn a diagnosis into a treatment even by accident.\n\nconst input = $input.first() ? $input.first().json : {};\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\n\nconst num = (v) => {\n  if (typeof v === \"number\" && Number.isFinite(v)) return v;\n  if (typeof v === \"string\" && v.trim() !== \"\" && Number.isFinite(Number(v))) return Number(v);\n  return null;\n};\n\nconst parseArray = (v) => {\n  let raw = v;\n  if (typeof raw === \"string\") {\n    const s = raw.trim();\n    if (s === \"\") return [];\n    try {\n      raw = JSON.parse(s);\n    } catch (e) {\n      return [];\n    }\n  }\n  return Array.isArray(raw) ? raw : [];\n};\n\nconst parseObject = (v) => {\n  let raw = v;\n  if (typeof raw === \"string\") {\n    const s = raw.trim();\n    if (s === \"\" || s === \"null\") return null;\n    try {\n      raw = JSON.parse(s);\n    } catch (e) {\n      return null;\n    }\n  }\n  return raw && typeof raw === \"object\" && !Array.isArray(raw) ? raw : null;\n};\n\nconst crops = parseArray(input.crops).map((c) => text(c)).filter((c) => c !== null);\nconst primaryCrop = text(input.primaryCrop) || (crops.length > 0 ? crops[0] : null);\n\nconst rawSoil = parseObject(input.latestSoil);\n// A value the farmer did not record stays null. It is never substituted,\n// and an absent reading is reported as \"not recorded\", never as zero.\nconst latestSoil = rawSoil\n  ? {\n      soilType: text(rawSoil.soilType),\n      ph: num(rawSoil.ph),\n      nitrogen: num(rawSoil.nitrogen),\n      phosphorus: num(rawSoil.phosphorus),\n      potassium: num(rawSoil.potassium),\n      organicCarbon: num(rawSoil.organicCarbon),\n      testedOn: text(rawSoil.testedOn)\n    }\n  : null;\n\nconst rawScans = parseArray(input.recentScans);\nconst recentScans = [];\nfor (const s of rawScans) {\n  if (!s || typeof s !== \"object\") continue;\n  const createdAt = text(s.createdAt);\n  if (!createdAt) continue;\n  recentScans.push({\n    scanId: text(s.scanId),\n    cropName: text(s.cropName),\n    createdAt,\n    category: text(s.category),\n    confidenceLevel: text(s.confidenceLevel),\n    recommendExpertConsult: s.recommendExpertConsult === true\n  });\n}\nrecentScans.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));\n\nconst context = {\n  farmId: text(input.farmId),\n  state: text(input.state),\n  district: text(input.district),\n  latitude: num(input.latitude),\n  longitude: num(input.longitude),\n  areaAcres: num(input.areaAcres),\n  crops,\n  primaryCrop,\n  latestSoil,\n  recentScans\n};\n\nconst question = text(input.text);\nconst locale = text(input.locale) || \"en\";\n\nreturn [\n  {\n    json: {\n      usable: question !== null,\n      question: question || \"\",\n      locale,\n      context,\n      contextJson: JSON.stringify(context)\n    }\n  }\n];\n"
+      },
+      "id": "83aed41e-1358-4ab5-a140-76e732919990",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        768
+      ],
+      "notesInFlow": true,
+      "notes": "Farm context comes from the request, never from Supabase. Scans carry no disease label. Soil values are carried because soil.status reports them back as recorded facts - they are never interpreted into advice."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "chat-question-usable",
+              "leftValue": "={{ $json.usable }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "26e41e8b-25e7-4272-9a21-00389c99d05a",
+      "name": "Question Usable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------\n// DETERMINISTIC MULTILINGUAL INTENT CLASSIFIER.\n//\n// Maps a farmer's question onto one of nine fixed intents. This is a\n// closed enum, never free text, so the worst thing a misclassification\n// can do is answer the wrong *true* question — it can never invent a\n// fact. That property is why no LLM is needed here in v1.\n//\n// An LLM classifier could be wired in ahead of this node later: it would\n// have to emit the same { intent, cropSlot } shape and nothing else, and\n// this node stays as the fallback for when it is unavailable or not\n// configured. Nothing downstream would change.\n//\n// Keyword tables live in this workflow rather than in the locale\n// bundles: these are matching rules, not farmer-facing copy, and they\n// must not drift when someone rewords a UI string.\n//\n// Matching is accent- and case-insensitive on a letters-only reduction,\n// the same discipline the Market agent uses for district names.\n// ---------------------------------------------------------------------\n\nconst KEYWORDS = {\n  forecast: {\n    en: [\"forecast\", \"next few days\", \"coming days\", \"tomorrow\", \"this week\"],\n    ta: [\"முன்னறிவிப்பு\", \"நாளை\", \"வரும் நாட்கள்\"],\n    te: [\"సూచన\", \"రేపు\", \"రాబోయే\"],\n    hi: [\"पूर्वानुमान\", \"कल\", \"आने वाले\"]\n  },\n  weather: {\n    en: [\"weather\", \"rain\", \"temperature\", \"hot\", \"wind\", \"climate\"],\n    ta: [\"வானிலை\", \"மழை\", \"வெப்பநிலை\", \"காற்று\"],\n    te: [\"వాతావరణం\", \"వర్షం\", \"ఉష్ణోగ్రత\", \"గాలి\"],\n    hi: [\"मौसम\", \"बारिश\", \"तापमान\", \"हवा\"]\n  },\n  market: {\n    en: [\"price\", \"rate\", \"market\", \"mandi\", \"sell\", \"selling\", \"cost of\"],\n    ta: [\"விலை\", \"சந்தை\", \"விற்க\", \"மண்டி\"],\n    te: [\"ధర\", \"మార్కెట్\", \"అమ్మ\", \"మండి\"],\n    hi: [\"भाव\", \"कीमत\", \"मंडी\", \"बाज़ार\", \"बाजार\", \"बेच\"]\n  },\n  schemes: {\n    en: [\"scheme\", \"subsidy\", \"government\", \"yojana\", \"benefit\", \"apply\"],\n    ta: [\"திட்டம்\", \"திட்டங்கள்\", \"மானியம்\", \"அரசு\"],\n    te: [\"పథకం\", \"పథకాలు\", \"సబ్సిడీ\", \"ప్రభుత్వ\"],\n    hi: [\"योजना\", \"योजनाएं\", \"सब्सिडी\", \"सरकारी\", \"अनुदान\"]\n  },\n  diagnosis: {\n    en: [\"scan\", \"disease\", \"diagnos\", \"sick\", \"infected\", \"leaf\", \"spot\"],\n    ta: [\"ஸ்கேன்\", \"நோய்\", \"பாதிப்பு\", \"இலை\"],\n    te: [\"స్కాన్\", \"వ్యాధి\", \"తెగులు\", \"ఆకు\"],\n    hi: [\"स्कैन\", \"बीमारी\", \"रोग\", \"पत्ती\"]\n  },\n  soil: {\n    en: [\"soil\", \"ph\", \"nitrogen\", \"phosphorus\", \"potassium\", \"npk\", \"organic carbon\"],\n    ta: [\"மண்\", \"மண்ணின்\", \"தழைச்சத்து\"],\n    te: [\"నేల\", \"మట్టి\"],\n    hi: [\"मिट्टी\", \"मृदा\"]\n  },\n  farm: {\n    en: [\"my farm\", \"farm detail\", \"land\", \"acre\", \"how big\", \"location\"],\n    ta: [\"பண்ணை\", \"நிலம்\", \"ஏக்கர்\"],\n    te: [\"క్షేత్రం\", \"భూమి\", \"ఎకరా\"],\n    hi: [\"खेत\", \"ज़मीन\", \"जमीन\", \"एकड़\"]\n  },\n  briefing: {\n    en: [\"summary\", \"briefing\", \"what should\", \"today\", \"overview\", \"anything\"],\n    ta: [\"சுருக்கம்\", \"இன்று\", \"என்ன செய்ய\"],\n    te: [\"సారాంశం\", \"ఈరోజు\", \"ఏమి చేయాలి\"],\n    hi: [\"सारांश\", \"आज\", \"क्या करूं\", \"क्या करें\"]\n  }\n};\n\n// Order matters: the first match wins, so the more specific topics are\n// tested before the catch-all \"briefing\" words like \"today\".\nconst PRIORITY = [\"forecast\", \"weather\", \"market\", \"schemes\", \"diagnosis\", \"soil\", \"farm\", \"briefing\"];\n\nconst data = $input.first().json;\nconst question = String(data.question || \"\");\nconst lower = question.toLowerCase();\n\n/** Letters and digits only, so punctuation and spacing cannot block a match. */\nconst reduce = (s) => String(s).toLowerCase().replace(/[^\\p{L}\\p{N}]/gu, \"\");\nconst reducedQuestion = reduce(question);\n\nconst hits = (topic) => {\n  const table = KEYWORDS[topic];\n  for (const lang of Object.keys(table)) {\n    for (const word of table[lang]) {\n      if (lower.indexOf(word.toLowerCase()) !== -1) return true;\n      if (reduce(word).length >= 3 && reducedQuestion.indexOf(reduce(word)) !== -1) return true;\n    }\n  }\n  return false;\n};\n\nlet topic = null;\nfor (const candidate of PRIORITY) {\n  if (hits(candidate)) {\n    topic = candidate;\n    break;\n  }\n}\n\n// The crop slot is matched against the farm's OWN crops, which the\n// request already carries. That avoids needing an agricultural\n// vocabulary, and it means the chatbot can only ever price a crop the\n// farmer actually grows.\nconst crops = Array.isArray(data.context.crops) ? data.context.crops : [];\nlet cropSlot = null;\nfor (const crop of crops) {\n  if (reducedQuestion.indexOf(reduce(crop)) !== -1) {\n    cropSlot = crop;\n    break;\n  }\n}\nif (!cropSlot) cropSlot = data.context.primaryCrop;\n\nconst INTENT_OF = {\n  forecast: \"weather.forecast\",\n  weather: \"weather.today\",\n  market: \"market.price\",\n  schemes: \"schemes.list\",\n  diagnosis: \"diagnosis.recent\",\n  soil: \"soil.status\",\n  farm: \"farm.info\",\n  briefing: \"briefing.summary\"\n};\n\nconst intent = topic ? INTENT_OF[topic] : \"unknown\";\n\n// Which branch of the Switch handles it. \"local\" is answered entirely\n// from the supplied context — note there is no route to Crop Diagnosis\n// from anywhere in this workflow, so chat can never trigger an\n// inference.\nconst ROUTE_OF = {\n  \"weather.today\": \"weather\",\n  \"weather.forecast\": \"weather\",\n  \"market.price\": \"market\",\n  \"schemes.list\": \"schemes\",\n  \"briefing.summary\": \"briefing\"\n};\nconst route = ROUTE_OF[intent] || \"local\";\n\n// Market needs a crop to ask about; without one the answer says so\n// rather than pricing something the farmer did not mention.\nconst finalRoute = route === \"market\" && !cropSlot ? \"local\" : route;\n\nconsole.log(\"Chat intent:\", JSON.stringify({ intent, route: finalRoute, cropSlot, locale: data.locale }));\n\nreturn [\n  {\n    json: {\n      intent,\n      route: finalRoute,\n      cropSlot,\n      locale: data.locale,\n      question,\n      context: data.context,\n      contextJson: data.contextJson\n    }\n  }\n];\n"
+      },
+      "id": "1e4ac259-c36e-4b77-bc5e-e748658864c5",
+      "name": "Classify Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        672
+      ],
+      "notesInFlow": true,
+      "notes": "Deterministic multilingual keyword routing to a closed enum of nine intents. No LLM in v1: a misclassification can only answer the wrong true question, never invent a fact. An LLM classifier could sit ahead of this node emitting the same {intent, cropSlot} shape, with this as its fallback."
+    },
+    {
+      "parameters": {
+        "jsCode": "// The question was empty or unreadable, so there is nothing to answer.\n// The farmer gets a plain message; the detail goes to the execution log\n// so the failure stays diagnosable without leaking internals.\n\nconst data = $input.first() ? $input.first().json : {};\nconsole.log(\n  \"Chat request unusable:\",\n  JSON.stringify({ hasQuestion: !!data.question, locale: data.locale })\n);\n\nreturn [\n  {\n    json: {\n      status: \"unavailable\",\n      reason: \"I couldn't read that question. Please try typing it again.\"\n    }\n  }\n];\n"
+      },
+      "id": "2537ac54-a2a6-43bc-95c4-7d26cbd40a22",
+      "name": "Build Unavailable Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "chat-route-weather",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "weather",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "41bcc8ce-d17a-4dbe-bef5-9e6081cb224b",
+      "name": "Weather Route?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "KmugUDlkzrUu0lBw",
+          "mode": "list",
+          "cachedResultName": "Weather - Core",
+          "cachedResultUrl": "/workflow/KmugUDlkzrUu0lBw"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "latitude": "={{ $('Classify Intent').first().json.context.latitude }}",
+            "longitude": "={{ $('Classify Intent').first().json.context.longitude }}",
+            "locale": "={{ $('Classify Intent').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "a552ec36-2ea7-4522-b092-272520f78cc5",
+      "name": "Call 'Weather - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 4
+      },
+      "id": "7f8a500c-1622-4e04-b5cc-fd0ae7bb7186",
+      "name": "Join Answer",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        544
+      ],
+      "notesInFlow": true,
+      "notes": "Synchronisation join only. Build Answer reads whichever branch ran by node name, so answer identity never depends on merge ordering. Local intents (diagnosis.recent, soil.status, farm.info, unknown) take no branch at all."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "notUsed",
+              "name": "notUsed",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8db6c9be-3f52-400e-908a-c6ec171060ee",
+      "name": "Skip Weather",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "chat-route-market",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "market",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "59c4be0c-01c4-4eae-a313-791929102e7b",
+      "name": "Market Route?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "9Yyz0Lawme5tXIYT",
+          "mode": "list",
+          "cachedResultName": "Market - Core",
+          "cachedResultUrl": "/workflow/9Yyz0Lawme5tXIYT"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $('Classify Intent').first().json.context.state }}",
+            "district": "={{ $('Classify Intent').first().json.context.district }}",
+            "commodity": "={{ $('Classify Intent').first().json.cropSlot }}",
+            "locale": "={{ $('Classify Intent').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "cb5392fe-95df-4c1f-aa4b-1dc10a4167ba",
+      "name": "Call 'Market - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "notUsed",
+              "name": "notUsed",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc6f3a70-edad-45fb-ba85-ca1c350bda6d",
+      "name": "Skip Market",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "chat-route-schemes",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "schemes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1b7ff08c-bb1f-4559-81f0-3781d52bea71",
+      "name": "Schemes Route?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "f6lVtDQSTI6CAok5",
+          "mode": "list",
+          "cachedResultName": "Schemes - Core",
+          "cachedResultUrl": "/workflow/f6lVtDQSTI6CAok5"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "state": "={{ $('Classify Intent').first().json.context.state }}",
+            "district": "={{ $('Classify Intent').first().json.context.district }}",
+            "areaAcres": "={{ $('Classify Intent').first().json.context.areaAcres }}",
+            "crops": "={{ JSON.stringify($('Classify Intent').first().json.context.crops) }}",
+            "locale": "={{ $('Classify Intent').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "698c863f-af0b-46db-b26c-b3b37b2fd402",
+      "name": "Call 'Schemes - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "notUsed",
+              "name": "notUsed",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "00328752-1a5d-4b29-9f67-625803d6ed94",
+      "name": "Skip Schemes",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "chat-route-briefing",
+              "leftValue": "={{ $json.route }}",
+              "rightValue": "briefing",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e60d358a-bce5-4619-bd7f-ac3d2f0d9640",
+      "name": "Briefing Route?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ydzxQDVZWs1NkB9y",
+          "mode": "list",
+          "cachedResultName": "Orchestrator - Core",
+          "cachedResultUrl": "/workflow/ydzxQDVZWs1NkB9y"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "farmId": "={{ $('Classify Intent').first().json.context.farmId }}",
+            "state": "={{ $('Classify Intent').first().json.context.state }}",
+            "district": "={{ $('Classify Intent').first().json.context.district }}",
+            "latitude": "={{ $('Classify Intent').first().json.context.latitude }}",
+            "longitude": "={{ $('Classify Intent').first().json.context.longitude }}",
+            "areaAcres": "={{ $('Classify Intent').first().json.context.areaAcres }}",
+            "crops": "={{ JSON.stringify($('Classify Intent').first().json.context.crops) }}",
+            "primaryCrop": "={{ $('Classify Intent').first().json.cropSlot }}",
+            "latestSoil": "={{ JSON.stringify($('Classify Intent').first().json.context.latestSoil) }}",
+            "recentScans": "={{ JSON.stringify($('Classify Intent').first().json.context.recentScans) }}",
+            "locale": "={{ $('Classify Intent').first().json.locale }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "d6737e81-82af-4a63-bf4b-d4d3f34e2967",
+      "name": "Call 'Orchestrator - Core'",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "notUsed",
+              "name": "notUsed",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "920549b6-2a74-41b8-8f19-6929c3cd2232",
+      "name": "Skip Briefing",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------\n// ANSWER BUILDER — keys and params only, never prose.\n//\n// This node cannot produce a sentence. It chooses an `answerKey` and\n// supplies `params` drawn strictly from fields a source actually\n// returned; the frontend renders `chat.answer.<answerKey>` in the\n// farmer's language. That is what keeps four languages of agricultural\n// wording in reviewable locale files, and what makes a chemical name, a\n// dosage or a treatment instruction impossible to emit.\n//\n// RULES THIS NODE MUST KEEP:\n//  1. A param is set only when the source actually reported it. Nothing\n//     is defaulted, substituted or inferred. A missing reading is\n//     reported as \"not recorded\", never as zero.\n//  2. An unavailable source produces an unavailable answer. There is no\n//     \"the service is down, but generally...\" path.\n//  3. Soil values are REPORTED, never interpreted. This node may say\n//     what the farmer recorded; it may not derive a fertiliser\n//     recommendation, a dosage or any agronomic prescription from it.\n//     There is no rule below that reads a nutrient value and branches on\n//     whether it is high or low — that is the line between reporting a\n//     record and giving advice.\n//  4. Scheme answers report the `matched` count and that conditions\n//     remain to be checked. Never eligibility.\n//  5. A diagnosis answer restates what the Crop Diagnosis Agent itself\n//     flagged. The disease label never reaches this workflow.\n// ---------------------------------------------------------------------\n\nconst classified = $('Classify Intent').first().json;\nconst intent = classified.intent;\nconst context = classified.context || {};\nconst cropSlot = classified.cropSlot;\n\nconst text = (v) => (typeof v === \"string\" && v.trim() !== \"\" ? v.trim() : null);\nconst num = (v) => (typeof v === \"number\" && Number.isFinite(v) ? v : null);\n\n/** Reads a fan-out branch without throwing when it did not execute. */\nconst readBranch = (nodeName) => {\n  try {\n    const item = $(nodeName).first();\n    return item && item.json ? item.json : null;\n  } catch (e) {\n    return null;\n  }\n};\n\nconst okData = (payload) =>\n  payload && payload.status === \"ok\" && payload.data && typeof payload.data === \"object\"\n    ? payload.data\n    : null;\n\nconst signalOf = (payload) => {\n  if (!payload) return { status: \"unavailable\", reasonKey: \"notConsulted\", asOf: null };\n  if (payload.status === \"ok\") {\n    return { status: \"ok\", reasonKey: null, asOf: text(payload.asOf) };\n  }\n  return { status: \"unavailable\", reasonKey: \"agentUnavailable\", asOf: null };\n};\n\n/** Only params with a real value survive — see rule 1. */\nconst clean = (obj) => {\n  const out = {};\n  for (const [k, v] of Object.entries(obj)) {\n    if (typeof v === \"number\" && Number.isFinite(v)) out[k] = v;\n    else if (typeof v === \"string\" && v.trim() !== \"\") out[k] = v.trim();\n  }\n  return Object.keys(out).length > 0 ? out : null;\n};\n\nconst answer = (answerKey, params, sources, signals) => ({\n  intent,\n  answerKey,\n  params: params ? clean(params) : null,\n  sources: sources || [],\n  signals: signals || {}\n});\n\nlet result;\n\nif (intent === \"weather.today\" || intent === \"weather.forecast\") {\n  const payload = readBranch(\"Call 'Weather - Core'\");\n  const data = okData(payload);\n  const signals = { weather: signalOf(payload) };\n\n  if (!data) {\n    result = answer(\"sourceUnavailable\", { source: \"weather\" }, [\"weather\"], signals);\n  } else if (intent === \"weather.forecast\") {\n    const days = Array.isArray(data.forecast) ? data.forecast : [];\n    if (days.length === 0) {\n      result = answer(\"sourceUnavailable\", { source: \"weather\" }, [\"weather\"], signals);\n    } else {\n      const d = days[0];\n      result = answer(\n        \"weatherForecast\",\n        {\n          days: days.length,\n          date: text(d.date),\n          maxTemp: num(d.temperatureMaxC),\n          minTemp: num(d.temperatureMinC),\n          rainChance: num(d.precipitationProbabilityMaxPct)\n        },\n        [\"weather\"],\n        signals\n      );\n    }\n  } else {\n    const c = data.current || {};\n    const temp = num(c.temperatureC);\n    // A reading the source omitted means the \"full\" template would have\n    // a hole in it, so a reduced template is used instead of a dash.\n    result =\n      temp === null\n        ? answer(\"weatherTodayPartial\", { code: num(c.weatherCode) }, [\"weather\"], signals)\n        : answer(\n            \"weatherToday\",\n            {\n              temp,\n              humidity: num(c.relativeHumidityPct),\n              wind: num(c.windSpeedKph),\n              code: num(c.weatherCode)\n            },\n            [\"weather\"],\n            signals\n          );\n  }\n} else if (intent === \"market.price\") {\n  const payload = readBranch(\"Call 'Market - Core'\");\n  const data = okData(payload);\n  const signals = { market: signalOf(payload) };\n\n  if (!data) {\n    result = answer(\"sourceUnavailable\", { source: \"market\" }, [\"market\"], signals);\n  } else {\n    const quotes = (Array.isArray(data.quotes) ? data.quotes : []).filter(\n      (q) => q && num(q.modalPrice) !== null\n    );\n    if (quotes.length === 0) {\n      result = answer(\n        \"marketPriceNoQuotes\",\n        { crop: text(data.commodity) || cropSlot, district: text(data.district) },\n        [\"market\"],\n        signals\n      );\n    } else {\n      let best = quotes[0];\n      for (const q of quotes) if (num(q.modalPrice) > num(best.modalPrice)) best = q;\n      result = answer(\n        \"marketPrice\",\n        {\n          crop: text(data.commodity) || cropSlot,\n          price: num(best.modalPrice),\n          market: text(best.market),\n          district: text(data.district),\n          reportedOn: text(data.latestReportedOn),\n          count: quotes.length\n        },\n        [\"market\"],\n        signals\n      );\n    }\n  }\n} else if (intent === \"schemes.list\") {\n  const payload = readBranch(\"Call 'Schemes - Core'\");\n  const data = okData(payload);\n  const signals = { schemes: signalOf(payload) };\n\n  if (!data) {\n    result = answer(\"sourceUnavailable\", { source: \"schemes\" }, [\"schemes\"], signals);\n  } else {\n    const matches = Array.isArray(data.matches) ? data.matches : [];\n    const matched = matches.filter((m) => m && m.group === \"matched\");\n    result =\n      matched.length === 0\n        ? answer(\"schemesNone\", null, [\"schemes\"], signals)\n        : // \"count matched, conditions still to check\" — never eligibility.\n          answer(\"schemesList\", { count: matched.length }, [\"schemes\"], signals);\n  }\n} else if (intent === \"briefing.summary\") {\n  const payload = readBranch(\"Call 'Orchestrator - Core'\");\n  const data = okData(payload);\n  const signals = { farm: signalOf(payload) };\n\n  if (!data) {\n    result = answer(\"sourceUnavailable\", { source: \"farm\" }, [\"farm\"], signals);\n  } else {\n    const actions = Array.isArray(data.actions) ? data.actions : [];\n    const high = actions.filter((a) => a && a.priority === \"high\").length;\n    result =\n      actions.length === 0\n        ? answer(\"briefingNothing\", null, [\"farm\"], signals)\n        : answer(\"briefingSummary\", { total: actions.length, high }, [\"farm\"], signals);\n  }\n} else if (intent === \"diagnosis.recent\") {\n  // Answered from the scans the frontend supplied. No Crop Diagnosis\n  // inference is triggered — this workflow has no route to it at all.\n  const scans = Array.isArray(context.recentScans) ? context.recentScans : [];\n  const signals = {\n    diagnosis:\n      scans.length > 0\n        ? { status: \"ok\", reasonKey: null, asOf: text(scans[0].createdAt) }\n        : { status: \"skipped\", reasonKey: \"noRecentScans\", asOf: null }\n  };\n\n  if (scans.length === 0) {\n    result = answer(\"diagnosisNone\", null, [\"diagnosis\"], signals);\n  } else {\n    const latest = scans[0];\n    const params = {\n      crop: text(latest.cropName),\n      date: text(latest.createdAt),\n      confidence: text(latest.confidenceLevel),\n      count: scans.length\n    };\n    result = latest.recommendExpertConsult\n      ? answer(\"diagnosisNeedsExpert\", params, [\"diagnosis\"], signals)\n      : answer(\"diagnosisRecent\", params, [\"diagnosis\"], signals);\n  }\n} else if (intent === \"soil.status\") {\n  // Reports what the farmer recorded. Note there is no branch here on\n  // whether a value is high or low: reporting a record is allowed,\n  // interpreting it into a recommendation is not (rule 3).\n  const soil = context.latestSoil;\n  const signals = {\n    soil: soil\n      ? { status: \"ok\", reasonKey: null, asOf: text(soil.testedOn) }\n      : { status: \"skipped\", reasonKey: \"noSoilRecord\", asOf: null }\n  };\n\n  if (!soil) {\n    result = answer(\"soilNone\", null, [\"soil\"], signals);\n  } else {\n    // Fields the farmer left blank stay absent, so the rendered answer\n    // lists only what was actually recorded.\n    result = answer(\n      \"soilStatus\",\n      {\n        testedOn: text(soil.testedOn),\n        soilType: text(soil.soilType),\n        ph: num(soil.ph),\n        nitrogen: num(soil.nitrogen),\n        phosphorus: num(soil.phosphorus),\n        potassium: num(soil.potassium),\n        organicCarbon: num(soil.organicCarbon)\n      },\n      [\"soil\"],\n      signals\n    );\n  }\n} else if (intent === \"farm.info\") {\n  const signals = { farm: { status: \"ok\", reasonKey: null, asOf: null } };\n  const hasLocation = context.state && context.district;\n  result = answer(\n    hasLocation ? \"farmInfo\" : \"farmInfoNoLocation\",\n    {\n      state: text(context.state),\n      district: text(context.district),\n      areaAcres: num(context.areaAcres),\n      cropCount: Array.isArray(context.crops) ? context.crops.length : 0,\n      crops: Array.isArray(context.crops) ? context.crops.join(\", \") : \"\"\n    },\n    [\"farm\"],\n    signals\n  );\n} else {\n  // Unknown, or market with no crop to ask about. Explains what the\n  // chatbot can answer instead of guessing at the question.\n  result = answer(\n    intent === \"market.price\" ? \"marketNoCrop\" : \"unknown\",\n    null,\n    [],\n    {}\n  );\n}\n\nreturn [\n  {\n    json: {\n      status: \"ok\",\n      asOf: new Date().toISOString(),\n      source: \"agri-one-chat\",\n      data: result\n    }\n  }\n];\n"
+      },
+      "id": "2a538023-3fc6-4398-b275-33f5d3c2e821",
+      "name": "Build Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        576
+      ],
+      "notesInFlow": true,
+      "notes": "Emits answerKey + params + sources + signals. Cannot produce a sentence. Params come only from fields a source actually returned; an unavailable source yields an unavailable answer; soil values are reported, never interpreted; schemes report matched counts, never eligibility; the diagnosis answer restates the agent own flag and never sees a disease label."
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Question Usable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question Usable?": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Unavailable Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent": {
+      "main": [
+        [
+          {
+            "node": "Weather Route?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Market Route?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Schemes Route?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Briefing Route?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather Route?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Weather - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Weather - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join Answer": {
+      "main": [
+        [
+          {
+            "node": "Build Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Weather": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Market Route?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Market - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Market",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Market - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Skip Market": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schemes Route?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Schemes - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Schemes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Schemes - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Skip Schemes": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Briefing Route?": {
+      "main": [
+        [
+          {
+            "node": "Call 'Orchestrator - Core'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Orchestrator - Core'": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Skip Briefing": {
+      "main": [
+        [
+          {
+            "node": "Join Answer",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

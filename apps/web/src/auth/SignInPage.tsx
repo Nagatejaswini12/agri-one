@@ -74,7 +74,12 @@ export default function SignInPage() {
           {pending ? t("auth.signingIn") : t("auth.signIn")}
         </button>
       </form>
-      <p className="mt-4 text-center text-sm text-gray-600">
+      <p className="mt-4 text-center text-sm">
+        <Link to="/forgot-password" className="font-medium text-green-700 underline">
+          {t("auth.forgotPassword")}
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-sm text-gray-600">
         {t("auth.noAccount")}{" "}
         <Link to="/sign-up" className="font-medium text-green-700 underline">
           {t("auth.signUp")}

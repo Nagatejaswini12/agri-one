@@ -419,6 +419,61 @@ export interface FarmBriefing {
 }
 
 /**
+ * What the chatbot can be asked. A closed set on purpose: the classifier
+ * may only choose from these, so its worst failure is answering the
+ * wrong *true* question rather than inventing one.
+ */
+export type ChatIntent =
+  | "weather.today"
+  | "weather.forecast"
+  | "market.price"
+  | "schemes.list"
+  | "diagnosis.recent"
+  | "farm.info"
+  | "soil.status"
+  | "briefing.summary"
+  | "unknown";
+
+/**
+ * One answer, as keys rather than prose.
+ *
+ * There is deliberately no free-text field anywhere in this shape. The
+ * agent chooses an `answerKey` and supplies `params` drawn only from
+ * what a source actually returned; the frontend renders
+ * `chat.answer.<answerKey>` in the farmer's own language. That is what
+ * keeps four languages of agricultural wording in reviewable locale
+ * files, and what makes it structurally impossible for the chatbot to
+ * produce a chemical name, a dosage or a treatment instruction.
+ *
+ * `sources` reuses `DecisionSourceAgent` so a chat answer chips back to
+ * the same modules a briefing line does.
+ */
+export interface ChatAnswer {
+  intent: ChatIntent;
+  answerKey: string;
+  params: Record<string, string | number> | null;
+  sources: DecisionSourceAgent[];
+  /** Only the sources this answer actually consulted. */
+  signals: Partial<Record<DecisionSourceAgent, SignalStatus>>;
+}
+
+/**
+ * Session-only: chat history lives in React state for v1, so there is no
+ * table and no migration behind it.
+ *
+ * For an assistant message, `text` is the already-rendered i18n string —
+ * the same one shown on screen and handed to speech synthesis, so the
+ * spoken and written answers cannot diverge.
+ */
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  answer: ChatAnswer | null;
+  at: string;
+}
+
+/**
  * Every live-data module response must be one of these two shapes —
  * never a silently-defaulted value when a source is unavailable.
  */

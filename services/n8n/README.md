@@ -178,6 +178,80 @@ as a user token. `Market - Core` recorded **zero** executions across all
 three — its latest execution id (192) predates the first rejection (193),
 confirming the false branch terminates before Core.
 
+## Chat assistant (Phase 7)
+
+| Workflow | ID | Role |
+|---|---|---|
+| `Chat API` | `8yH5ATGCbdmRmhE4` | Public `POST /webhook/chat`. Verifies the Supabase JWT, then calls Core. Exported as `chat-api.json`. |
+| `Chat - Core` | `tlmAbOaRU2ILqRil` | Classifies the question, routes to one agent, builds the answer. Exported as `chat-core.json`. |
+
+```
+Webhook → Verify Supabase Token → Authenticated? ─ no ──→ Respond 401
+                                        │ yes
+                                        ▼
+                                Call 'Chat - Core'
+
+Chat Trigger → Normalize Input → Question Usable? ─false→ Build Unavailable Result
+                                       │ true
+                                       ▼
+                                Classify Intent
+                ┌──────────────┬───────┴───────┬──────────────┐
+          Weather Route?  Market Route?  Schemes Route?  Briefing Route?
+            │ t   │ f       │ t   │ f      │ t   │ f       │ t   │ f
+          Call  Skip      Call  Skip     Call  Skip      Call  Skip
+            └─────┴─────────┴─────┴────────┴─────┴─────────┴─────┘
+                                  ▼
+                            Join Answer (append, 4)
+                                  ▼
+                             Build Answer
+```
+
+Routing uses one IF gate per source rather than a Switch: the SDK's
+`switchCase` builder is undocumented and fails to parse, while IF +
+Merge is the pattern already proven in `Orchestrator - Core`. Exactly
+one agent runs per question; `local` intents take no branch at all.
+
+### Why this cannot give agricultural advice
+
+`Build Answer` cannot produce a sentence. It emits `answerKey` + `params`
++ `sources` + `signals`, and the frontend composes the wording from the
+locale bundles — the same "keys not prose" discipline as the Decision
+Agent. There is no free-text field anywhere in the contract, and the
+frontend normalizer discards one if a future payload adds it.
+
+Two exclusions are structural rather than merely forbidden:
+
+- **`recentScans` carries no disease label.** The assistant can restate
+  that the Crop Diagnosis Agent recommended an expert, and nothing more.
+  There is also no route from this workflow to the diagnosis workflow,
+  so chat can never trigger an inference.
+- **Soil values are reported, never interpreted.** The projection does
+  carry the farmer's recorded `ph`, NPK and `organicCarbon`, because
+  `soil.status` reads them back as facts using the same labels the
+  Soil & Water page uses. But no rule compares a reading to a threshold
+  — that comparison is exactly where a report would become a
+  prescription — and a field the farmer left blank is simply not listed.
+
+### Intent classification
+
+Deterministic multilingual keyword tables live in `Classify Intent`,
+versioned under `services/n8n/workflows/src/chat/`. They are matching
+rules, not farmer-facing copy, so they deliberately do **not** live in
+the locale bundles where a UI rewording could break routing.
+
+No LLM in v1, and none needed: the intent space is a closed enum of
+nine, so the worst a misclassification can do is answer the wrong *true*
+question. An LLM classifier could sit ahead of this node emitting the
+same `{intent, cropSlot}` shape, with this table as its fallback —
+it would never be allowed to write an answer.
+
+The crop slot is matched against **the farm's own crops**, which the
+request already carries, so the assistant can only price a crop the
+farmer actually grows and no crop vocabulary is needed.
+
+Edit the sources, push, republish, re-export, then run
+`node scripts/verify-chat-answers.mjs`.
+
 ## Orchestrator and Decision Agent (Phase 6)
 
 | Workflow | ID | Role |

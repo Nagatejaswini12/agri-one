@@ -3,6 +3,8 @@ import { AppShell } from "@/app/AppShell";
 import { RequireAuth } from "@/auth/RequireAuth";
 import SignInPage from "@/auth/SignInPage";
 import SignUpPage from "@/auth/SignUpPage";
+import ForgotPasswordPage from "@/auth/ForgotPasswordPage";
+import ResetPasswordPage from "@/auth/ResetPasswordPage";
 import DashboardPage from "@/modules/dashboard";
 import PlanHub from "@/app/PlanHub";
 import ProtectHub from "@/app/ProtectHub";
@@ -25,6 +27,11 @@ import VoiceAiPage from "@/modules/voice-ai";
 export const router = createBrowserRouter([
   { path: "/sign-in", element: <SignInPage /> },
   { path: "/sign-up", element: <SignUpPage /> },
+  // Public on purpose: a farmer arriving on a recovery link has only a
+  // temporary recovery session, and RequireAuth would send them to
+  // sign-in — the one place they cannot get to.
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   {
     path: "/",
     element: (

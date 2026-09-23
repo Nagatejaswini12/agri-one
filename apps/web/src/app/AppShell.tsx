@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useFarmerProfile, useSyncLanguageFromProfile } from "@/modules/profile/hooks";
@@ -18,6 +18,10 @@ export function AppShell() {
   const { t } = useTranslation();
   const { data: profile } = useFarmerProfile();
   useSyncLanguageFromProfile(profile);
+  // The floating button exists to reach the assistant from anywhere. On
+  // the assistant's own page it does nothing except sit on top of the
+  // send button — which on a phone makes the composer untappable.
+  const onAssistantPage = useLocation().pathname === "/voice-ai";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,13 +42,15 @@ export function AppShell() {
         <Outlet />
       </main>
 
-      <NavLink
-        to="/voice-ai"
-        aria-label={t("nav.voiceAi")}
-        className="fixed bottom-20 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-2xl text-white shadow-lg"
-      >
-        🎙️
-      </NavLink>
+      {onAssistantPage ? null : (
+        <NavLink
+          to="/voice-ai"
+          aria-label={t("nav.voiceAi")}
+          className="fixed bottom-20 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-2xl text-white shadow-lg"
+        >
+          🎙️
+        </NavLink>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 flex border-t bg-white">
         {STAGE_NAV_ITEMS.map(({ to, key }) => (
