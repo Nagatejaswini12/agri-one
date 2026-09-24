@@ -32,7 +32,7 @@ await i18n.init({
 
 /** Params covering every placeholder any action label uses. */
 const PARAMS = {
-  crop: "Tomato",
+  crop: "Tomato", variety: "Bellary",
   price: 3000,
   market: "Tiruthani",
   district: "Thiruvellore",

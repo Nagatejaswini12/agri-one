@@ -35,7 +35,7 @@ const PARAMS = {
   temp: 28.7, humidity: 60, wind: 12, code: 3,
   maxTemp: 33.3, minTemp: 25.6, rainChance: 15, days: 3,
   date: "2026-09-22", reportedOn: "2026-09-22", testedOn: "2026-03-01",
-  crop: "Tomato", price: 3000, market: "Tiruthani", district: "Thiruvellore",
+  crop: "Tomato", variety: "Bellary", price: 3000, market: "Tiruthani", district: "Thiruvellore",
   count: 6, total: 4, high: 1, confidence: "low",
   state: "Tamil Nadu", areaAcres: 2, cropCount: 2, crops: "Tomato, onion",
   values: "pH 6.5, Nitrogen (N) 280", sourceLabel: "Market", language: "English",

@@ -83,27 +83,78 @@ if (weather) {
   }
 }
 
+/**
+ * Groups quotes that are actually comparable: same variety AND same
+ * grade. Self-contained on purpose — the regression test reads this
+ * function straight out of the shipped node source and evaluates it, so
+ * what is tested is exactly what n8n runs.
+ *
+ * WHY THIS EXISTS. AGMARKNET returns several varieties of one commodity
+ * side by side, and their prices are not comparable. Madurai onion on
+ * 2026-09-24 reported Bellary at Rs 4,500 and Onion Green at Rs 8,700;
+ * Pune reported Local onion at Rs 2,850 and "Other" at Rs 10 in the very
+ * same mandi. Ranking those together and calling the gap a spread tells
+ * a farmer they could get 87x more by changing venue, when the real
+ * difference is that it is a different product. A spread is only
+ * meaningful between venues selling the same thing.
+ *
+ * An identical copy of this function lives in the chat answer builder.
+ * scripts/verify-decision-rules.mjs asserts the two stay byte-identical.
+ */
+function groupComparableQuotes(quotes) {
+  const list = Array.isArray(quotes) ? quotes : [];
+  const groups = [];
+  const index = {};
+  for (const q of list) {
+    if (!q || typeof q !== "object") continue;
+    const price =
+      typeof q.modalPrice === "number" && Number.isFinite(q.modalPrice) ? q.modalPrice : null;
+    // A quote with no usable price cannot take part in a comparison, and
+    // a quote with no mandi name cannot be named in one.
+    if (price === null) continue;
+    const market = typeof q.market === "string" ? q.market.trim() : "";
+    if (market === "") continue;
+
+    const variety =
+      typeof q.variety === "string" && q.variety.trim() !== "" ? q.variety.trim() : null;
+    const grade = typeof q.grade === "string" && q.grade.trim() !== "" ? q.grade.trim() : null;
+    // \u0001 cannot occur in a source value, so it is a safe separator.
+    const key = (variety === null ? "\u0000" : variety) + "\u0001" + (grade === null ? "\u0000" : grade);
+
+    if (index[key] === undefined) {
+      index[key] = groups.length;
+      groups.push({ variety, grade, quotes: [] });
+    }
+    groups[index[key]].quotes.push({ market, price });
+  }
+  return groups;
+}
+
 // --- market (rules 7-8) ----------------------------------------------
 const market = ok("market");
 if (market) {
-  const quotes = Array.isArray(market.quotes) ? market.quotes : [];
-  const priced = quotes.filter((q) => q && num(q.modalPrice) !== null);
   const crop = text(market.commodity) || text(context.primaryCrop);
+  // Only quotes that are comparable to each other, grouped by the
+  // variety and grade the source reported.
+  const groups = groupComparableQuotes(market.quotes);
 
-  if (priced.length > 0 && crop) {
-    let low = priced[0];
-    let high = priced[0];
-    for (const q of priced) {
-      if (num(q.modalPrice) < num(low.modalPrice)) low = q;
-      if (num(q.modalPrice) > num(high.modalPrice)) high = q;
-    }
+  if (groups.length > 0 && crop) {
+    // Report a price from the most widely reported variety: it is the
+    // one most likely to be what the farmer actually grows, and naming
+    // the variety means the number can be checked.
+    let main = groups[0];
+    for (const g of groups) if (g.quotes.length > main.quotes.length) main = g;
+
+    let best = main.quotes[0];
+    for (const q of main.quotes) if (q.price > best.price) best = q;
 
     emit(
-      "marketPriceReported",
+      main.variety ? "marketPriceReportedVariety" : "marketPriceReported",
       {
         crop,
-        price: num(high.modalPrice),
-        market: text(high.market) || "",
+        variety: main.variety || "",
+        price: best.price,
+        market: best.market,
         district: text(market.district) || "",
         reportedOn: text(market.latestReportedOn) || ""
       },
@@ -111,20 +162,40 @@ if (market) {
       "market"
     );
 
-    // Naming the spread is a fact about today's reported prices. It is
-    // not advice to go to a particular mandi: transport, quantity and
-    // relationships are things this system knows nothing about.
-    const lowP = num(low.modalPrice);
-    const highP = num(high.modalPrice);
-    if (lowP !== null && highP !== null && lowP > 0 && (highP - lowP) / lowP >= SPREAD_THRESHOLD) {
+    // A spread is only a fact when both ends are the same product. Each
+    // group is checked on its own, and the widest qualifying one is
+    // reported; a group with fewer than two venues cannot have a spread
+    // at all. This is still not advice to go anywhere: transport,
+    // quantity and relationships are things this system knows nothing
+    // about.
+    let widest = null;
+    let widestRatio = 0;
+    for (const g of groups) {
+      if (g.quotes.length < 2) continue;
+      let low = g.quotes[0];
+      let high = g.quotes[0];
+      for (const q of g.quotes) {
+        if (q.price < low.price) low = q;
+        if (q.price > high.price) high = q;
+      }
+      if (low.price <= 0) continue;
+      const ratio = (high.price - low.price) / low.price;
+      if (ratio >= SPREAD_THRESHOLD && ratio > widestRatio) {
+        widestRatio = ratio;
+        widest = { group: g, low, high };
+      }
+    }
+
+    if (widest) {
       emit(
-        "marketSpread",
+        widest.group.variety ? "marketSpreadVariety" : "marketSpread",
         {
           crop,
-          low: lowP,
-          high: highP,
-          lowMarket: text(low.market) || "",
-          highMarket: text(high.market) || ""
+          variety: widest.group.variety || "",
+          low: widest.low.price,
+          high: widest.high.price,
+          lowMarket: widest.low.market,
+          highMarket: widest.high.market
         },
         "medium",
         "market"

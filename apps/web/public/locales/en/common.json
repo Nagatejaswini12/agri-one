@@ -391,7 +391,9 @@
       "soilDataStale": "The last soil test recorded was on {{testedOn}}.",
       "farmLocationMissing": "This farm has no location saved, so weather could not be checked.",
       "farmDistrictMissing": "This farm has no state and district saved, so market prices could not be checked.",
-      "noCropsRecorded": "No crops are recorded for this farm, so market prices could not be checked."
+      "noCropsRecorded": "No crops are recorded for this farm, so market prices could not be checked.",
+      "marketPriceReportedVariety": "{{variety}} {{crop}} was reported at ₹{{price}} per quintal at {{market}} on {{reportedOn}}.",
+      "marketSpreadVariety": "Reported {{variety}} {{crop}} prices today range from ₹{{low}} at {{lowMarket}} to ₹{{high}} at {{highMarket}}."
     }
   },
   "chat": {
@@ -437,7 +439,8 @@
       "briefingSummary": "Your farm briefing has {{total}} things listed, {{high}} of them needing attention. Open the home page for the full briefing.",
       "briefingNothing": "Nothing needs your attention on this farm right now.",
       "sourceUnavailable": "I couldn't reach {{sourceLabel}} just now, so I don't have an answer for that. Please try again.",
-      "unknown": "I can only answer using your own AGRI ONE data. Try asking about the weather, a crop price, government schemes, your last crop scan, your soil record, your farm, or today's summary."
+      "unknown": "I can only answer using your own AGRI ONE data. Try asking about the weather, a crop price, government schemes, your last crop scan, your soil record, your farm, or today's summary.",
+      "marketPriceVariety": "On {{reportedOn}}, {{variety}} {{crop}} was reported at ₹{{price}} per quintal at {{market}} in {{district}}. {{count}} mandis reported prices for this variety."
     }
   },
   "reports": {
@@ -495,6 +498,29 @@
       "kg": "Kilogram",
       "tonne": "Tonne",
       "bag": "Bag"
+    }
+  },
+  "marketplace": {
+    "title": "Where you can sell",
+    "intro": "Mandis that reported a price for your crop today.",
+    "noFarm": "Add a farm first to see where you can sell.",
+    "noLocation": "This farm has no state and district saved. Selling places are looked up by district.",
+    "noCrops": "Add a crop to this farm to see where you can sell it.",
+    "loadError": "Couldn't reach the market price service. Please try again.",
+    "disclaimer": "These are mandis that reported a price today, not buyers. Nobody here has agreed to buy from you, and the price shown is what the mandi reported — not an offer.",
+    "scope": "Showing venues that reported a {{crop}} price in {{district}} on {{date}}.",
+    "scopeNoDate": "Showing venues that reported a {{crop}} price in {{district}}.",
+    "noVenues": "No mandi reported a {{crop}} price in {{district}} today.",
+    "varietyHeading": "{{variety}}",
+    "varietyUnknown": "Variety not reported",
+    "varietyNote": "Venues are grouped by variety because prices for different varieties of the same crop are not comparable.",
+    "officialChannels": "Official selling channels",
+    "channelVerified": "checked {{date}}",
+    "notADirectory": "This is not a buyer directory. AGRI ONE holds no trader contacts and does not arrange sales.",
+    "kind": {
+      "farmersMarket": "Farmers' market",
+      "regulatedYard": "Regulated market yard",
+      "other": "Market"
     }
   }
 }

@@ -495,6 +495,65 @@ farm context to run against.
   policies are never evaluated and every request fails with 42501 (see
   `20260919130000_grant_authenticated_role.sql`).
 
+## Phase 9 — Marketplace ("Where you can sell") and the variety-scoped price fix
+
+- **No new agent, no new workflow, no migration.** Marketplace calls
+  `Market - Core` — the same webhook the Market Analysis page already
+  uses, with the same request shape. The only new code is frontend:
+  grouping, classification and copy. A second workflow returning the
+  same AGMARKNET snapshot would be duplication, not a feature.
+- **Mandis are not buyers, and the page says so twice.** AGMARKNET
+  publishes which market yards *reported a price*, not who will buy a
+  farmer's produce. The page opens with "These are mandis that reported
+  a price today, not buyers" and closes with "AGRI ONE holds no trader
+  contacts and does not arrange sales." There are no names, no phone
+  numbers and no contact details anywhere in the module, because there
+  is no verified open dataset of agricultural buyers in India (see
+  `docs/data-sources.md`) and inventing one would be the single most
+  harmful thing this app could do.
+- **Venue type is read from the source's own naming, never guessed.**
+  `classifyVenue` matches `Uzhavar Sandhai` → farmers' market and
+  `APMC` → regulated market yard; everything else is labelled plainly
+  as a market. The classifier reads the mandi name AGMARKNET returned
+  and nothing else — no lookup table of what a mandi "probably" is.
+- **Official channels appear only for a state that has a verified
+  entry.** `OFFICIAL_CHANNELS` mirrors the curated scheme catalog by
+  `catalogId`, and tests assert the URL, source name and
+  `lastVerifiedOn` cannot drift from it. A state with no verified
+  channel gets nothing — not a national placeholder, which would point
+  a farmer at a scheme that may not serve them. Links are
+  `rel="noopener noreferrer"` to official `.gov.in` addresses.
+
+### The cross-variety price bug this phase fixed
+
+AGMARKNET reports several varieties of one commodity under the same
+commodity name, and **their prices are not comparable**. Madurai on
+2026-09-24 reported Onion (Bellary) at ₹4,500 and Onion (Green) at
+₹8,700; Pune reported Onion (Local) at ₹2,850 and Onion (Other) at
+₹10 — in the same mandi, on the same day. Comparing across those
+varieties produces a spread that is arithmetically real and
+agriculturally meaningless, and acting on it would send a farmer to the
+wrong market.
+
+- `groupComparableQuotes(quotes)` groups on **variety + grade**
+  together, and a group must hold **at least two** venues with a valid
+  modal price before any comparison is made.
+- `Decision - Core` now emits `marketPriceReportedVariety` and
+  `marketSpreadVariety`, naming the variety in the line the farmer
+  reads, and finds the widest spread *within* a group rather than
+  across the district.
+- `Chat - Core` carries the identical correction: `market.price`
+  scopes to one variety group and emits `marketPriceVariety`, with
+  `count` reporting the mandis for *that variety*, not the commodity.
+- The two copies of `groupComparableQuotes` are asserted
+  byte-identical in `modules/market/spread.test.ts`, which loads the
+  function out of both shipped node sources rather than from a
+  re-implementation — a drift between them would be invisible
+  otherwise.
+- `Market - Core` was deliberately **not** changed: it reports what the
+  source published, variety and grade included. The grouping belongs to
+  whoever compares, not to the workflow that fetches.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.

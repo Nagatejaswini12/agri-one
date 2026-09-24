@@ -60,6 +60,12 @@ Request `{ state, district, commodity, locale }` — the farm's own saved
 `farms.state`/`farms.district` plus the `farm_crops.cropName` the farmer
 selected. Responds with `DataResult<MarketSnapshot>`.
 
+Called by **two** pages with the identical request: Market Analysis and
+Marketplace ("Where you can sell"). Marketplace adds no endpoint of its
+own — it regroups the same response by variety in the frontend. Quotes
+from different varieties or grades are never compared; see "Phase 9" in
+`docs/architecture.md`.
+
 Unauthenticated calls return HTTP 401 and never reach AGMARKNET: the
 workflow's `Authenticated?` false branch terminates at
 `Respond Unauthorized`, which has no onward connection to

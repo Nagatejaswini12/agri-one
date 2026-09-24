@@ -26,6 +26,53 @@
 //     flagged. The disease label never reaches this workflow.
 // ---------------------------------------------------------------------
 
+/**
+ * Groups quotes that are actually comparable: same variety AND same
+ * grade. Self-contained on purpose — the regression test reads this
+ * function straight out of the shipped node source and evaluates it, so
+ * what is tested is exactly what n8n runs.
+ *
+ * WHY THIS EXISTS. AGMARKNET returns several varieties of one commodity
+ * side by side, and their prices are not comparable. Madurai onion on
+ * 2026-09-24 reported Bellary at Rs 4,500 and Onion Green at Rs 8,700;
+ * Pune reported Local onion at Rs 2,850 and "Other" at Rs 10 in the very
+ * same mandi. Ranking those together and calling the gap a spread tells
+ * a farmer they could get 87x more by changing venue, when the real
+ * difference is that it is a different product. A spread is only
+ * meaningful between venues selling the same thing.
+ *
+ * An identical copy of this function lives in the chat answer builder.
+ * scripts/verify-decision-rules.mjs asserts the two stay byte-identical.
+ */
+function groupComparableQuotes(quotes) {
+  const list = Array.isArray(quotes) ? quotes : [];
+  const groups = [];
+  const index = {};
+  for (const q of list) {
+    if (!q || typeof q !== "object") continue;
+    const price =
+      typeof q.modalPrice === "number" && Number.isFinite(q.modalPrice) ? q.modalPrice : null;
+    // A quote with no usable price cannot take part in a comparison, and
+    // a quote with no mandi name cannot be named in one.
+    if (price === null) continue;
+    const market = typeof q.market === "string" ? q.market.trim() : "";
+    if (market === "") continue;
+
+    const variety =
+      typeof q.variety === "string" && q.variety.trim() !== "" ? q.variety.trim() : null;
+    const grade = typeof q.grade === "string" && q.grade.trim() !== "" ? q.grade.trim() : null;
+    // \u0001 cannot occur in a source value, so it is a safe separator.
+    const key = (variety === null ? "\u0000" : variety) + "\u0001" + (grade === null ? "\u0000" : grade);
+
+    if (index[key] === undefined) {
+      index[key] = groups.length;
+      groups.push({ variety, grade, quotes: [] });
+    }
+    groups[index[key]].quotes.push({ market, price });
+  }
+  return groups;
+}
+
 const classified = $('Classify Intent').first().json;
 const intent = classified.intent;
 const context = classified.context || {};
@@ -131,10 +178,12 @@ if (intent === "weather.today" || intent === "weather.forecast") {
   if (!data) {
     result = answer("sourceUnavailable", { source: "market" }, ["market"], signals);
   } else {
-    const quotes = (Array.isArray(data.quotes) ? data.quotes : []).filter(
-      (q) => q && num(q.modalPrice) !== null
-    );
-    if (quotes.length === 0) {
+    // Grouped by variety and grade, because prices for different
+    // varieties of one commodity are not comparable — quoting the
+    // highest across all of them would answer "what is tomato worth"
+    // with the price of a different product.
+    const groups = groupComparableQuotes(data.quotes);
+    if (groups.length === 0) {
       result = answer(
         "marketPriceNoQuotes",
         { crop: text(data.commodity) || cropSlot, district: text(data.district) },
@@ -142,17 +191,22 @@ if (intent === "weather.today" || intent === "weather.forecast") {
         signals
       );
     } else {
-      let best = quotes[0];
-      for (const q of quotes) if (num(q.modalPrice) > num(best.modalPrice)) best = q;
+      let main = groups[0];
+      for (const g of groups) if (g.quotes.length > main.quotes.length) main = g;
+
+      let best = main.quotes[0];
+      for (const q of main.quotes) if (q.price > best.price) best = q;
+
       result = answer(
-        "marketPrice",
+        main.variety ? "marketPriceVariety" : "marketPrice",
         {
           crop: text(data.commodity) || cropSlot,
-          price: num(best.modalPrice),
-          market: text(best.market),
+          variety: main.variety || "",
+          price: best.price,
+          market: best.market,
           district: text(data.district),
           reportedOn: text(data.latestReportedOn),
-          count: quotes.length
+          count: main.quotes.length
         },
         ["market"],
         signals
