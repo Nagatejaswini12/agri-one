@@ -45,7 +45,8 @@
     "saving": "Saving…",
     "save": "Save",
     "edit": "Edit",
-    "delete": "Delete"
+    "delete": "Delete",
+    "cancel": "Cancel"
   },
   "auth": {
     "loading": "Checking your session…",
@@ -437,6 +438,63 @@
       "briefingNothing": "Nothing needs your attention on this farm right now.",
       "sourceUnavailable": "I couldn't reach {{sourceLabel}} just now, so I don't have an answer for that. Please try again.",
       "unknown": "I can only answer using your own AGRI ONE data. Try asking about the weather, a crop price, government schemes, your last crop scan, your soil record, your farm, or today's summary."
+    }
+  },
+  "reports": {
+    "intro": "Only what you record here is counted. Nothing is estimated or filled in for you.",
+    "noFarm": "Add a farm first to keep its records.",
+    "noCrops": "Add a crop to this farm before recording a harvest.",
+    "noFinancialEntries": "No expenses or income recorded yet for this farm.",
+    "noYieldEntries": "No harvests recorded yet for this farm.",
+    "loadError": "Couldn't load these records.",
+    "saveError": "Couldn't save this entry. Please try again.",
+    "moneyTitle": "Money",
+    "yieldTitle": "Harvest",
+    "totalRevenue": "Income",
+    "totalCost": "Expenses",
+    "margin": "Difference",
+    "marginNote": "Difference is your recorded income minus your recorded expenses — nothing else.",
+    "entriesCounted_one": "From {{count}} entry you recorded.",
+    "entriesCounted_other": "From {{count}} entries you recorded.",
+    "unitNote": "Totals are kept separate per unit, because different units can't be added together.",
+    "moneyEntries": "Money entries",
+    "yieldEntries": "Harvest entries",
+    "addEntry": "Add expense or income",
+    "addHarvest": "Add harvest",
+    "entryType": "Entry type",
+    "category_label": "Category",
+    "amount": "Amount (₹)",
+    "amountInvalid": "Enter an amount of zero or more.",
+    "crop": "Crop",
+    "wholeFarm": "Whole farm",
+    "recordedOn": "Date",
+    "notes": "Notes",
+    "quantity": "Quantity",
+    "quantityInvalid": "Enter a quantity of zero or more.",
+    "cropRequired": "Choose which crop this harvest is for.",
+    "unit": "Unit",
+    "harvestedOn": "Harvest date",
+    "unknownCrop": "Unknown crop",
+    "type": {
+      "cost": "Expense",
+      "revenue": "Income"
+    },
+    "category": {
+      "seed": "Seed",
+      "fertilizer": "Fertiliser",
+      "labour": "Labour",
+      "irrigation": "Irrigation",
+      "machinery": "Machinery",
+      "transport": "Transport",
+      "other": "Other",
+      "sale": "Crop sale",
+      "subsidy": "Subsidy received"
+    },
+    "unitName": {
+      "quintal": "Quintal",
+      "kg": "Kilogram",
+      "tonne": "Tonne",
+      "bag": "Bag"
     }
   }
 }

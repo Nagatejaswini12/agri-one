@@ -228,6 +228,14 @@ Contract details worth stating explicitly:
 
 Nothing is persisted — chat history is session-only React state.
 
+### Reports — no webhook
+
+Reports has no n8n endpoint at all. Both `farm_financial_records` and
+`yield_records` are read and written directly against Supabase under
+row-level security, exactly like Soil & Water: every value is the
+farmer's own entry, so there is no external source to orchestrate and
+nothing for an agent to fetch.
+
 ## Planned, in build order
 
 1. `POST /webhook/soil` — Soil Agent (Soil & Water is farmer-entered

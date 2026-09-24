@@ -1,4 +1,14 @@
-import type { CropDiagnosisResult, Farm, FarmCrop, Farmer, Scan, SoilRecord, SupportedLanguage } from "@agri-one/shared-types";
+import type {
+  CropDiagnosisResult,
+  Farm,
+  FarmCrop,
+  Farmer,
+  FarmFinancialRecord,
+  Scan,
+  SoilRecord,
+  SupportedLanguage,
+  YieldRecord
+} from "@agri-one/shared-types";
 
 // Supabase rows are snake_case; shared-types are camelCase. Small, boring
 // mappers here beat scattering ad-hoc field renames across every hook.
@@ -126,5 +136,53 @@ export function mapScanRow(row: ScanRow): Scan {
     diagnosisResult: row.diagnosis_result,
     confidence: row.confidence,
     createdAt: row.created_at
+  };
+}
+
+export interface FarmFinancialRecordRow {
+  id: string;
+  farm_id: string;
+  crop_id: string | null;
+  type: "cost" | "revenue";
+  category: string;
+  amount: number;
+  quantity: number | null;
+  unit: string | null;
+  recorded_on: string;
+  notes: string | null;
+}
+
+export function mapFarmFinancialRecordRow(row: FarmFinancialRecordRow): FarmFinancialRecord {
+  return {
+    id: row.id,
+    farmId: row.farm_id,
+    cropId: row.crop_id,
+    type: row.type,
+    category: row.category,
+    amount: row.amount,
+    quantity: row.quantity,
+    unit: row.unit,
+    recordedOn: row.recorded_on,
+    notes: row.notes
+  };
+}
+
+export interface YieldRecordRow {
+  id: string;
+  farm_id: string;
+  crop_id: string;
+  quantity: number;
+  unit: string;
+  harvested_on: string;
+}
+
+export function mapYieldRecordRow(row: YieldRecordRow): YieldRecord {
+  return {
+    id: row.id,
+    farmId: row.farm_id,
+    cropId: row.crop_id,
+    quantity: row.quantity,
+    unit: row.unit,
+    harvestedOn: row.harvested_on
   };
 }

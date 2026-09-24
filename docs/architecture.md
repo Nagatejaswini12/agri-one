@@ -459,6 +459,42 @@ farm context to run against.
   languages, and audits those labels for products, doses and eligibility
   claims.
 
+## Phase 8 — Reports
+
+- **Entirely the farmer's own data.** Two tables,
+  `farm_financial_records` and `yield_records`, both farmer-entered.
+  No external source, no API key, no agent and no n8n workflow — the
+  same shape as Soil & Water, which is also pure Supabase.
+- **No entries means no numbers.** An empty ledger renders an empty
+  state, never ₹0. A farmer who has recorded nothing has not earned
+  nothing; the app simply does not know, and a zero would be a
+  fabricated value dressed as a fact. `summarizeFinancials` returns
+  `hasEntries: false` and the page gates the whole summary on it.
+- **Nothing is derived beyond arithmetic on entered values.**
+  `margin` is exactly recorded income minus recorded expenses. There is
+  no estimation, no projection, and no filling of gaps — the rule
+  "Reports are built only from the farmer's own entered data" in
+  "Content rules" is enforced in `summarize.ts` and asserted in tests.
+- **Yields are never summed across units.** Adding quintals to bags
+  would invent a number that means nothing, so totals stay grouped by
+  the unit the farmer chose. Converting between them would need a
+  crop-specific weight this app does not have.
+- **Two deliberate delete behaviours.** A financial entry's `crop_id`
+  is nullable with `ON DELETE SET NULL`: deleting a crop must never
+  erase money actually spent. A yield's `crop_id` is required with
+  `ON DELETE CASCADE`, because a harvest quantity with no crop means
+  nothing.
+- **Categories and units are stable keys**, not display text, held in
+  `modules/reports/constants.ts` and rendered through
+  `reports.category.*` / `reports.unitName.*`. "Fertiliser" there
+  labels money the farmer spent, the way a receipt does — nothing in
+  this module recommends buying or applying anything.
+- **Migration**: `supabase/migrations/20260923120000_phase8_reports.sql`
+  adds both tables with farm-scoped RLS matching `soil_records`, plus
+  the base table `GRANT` to `authenticated` — without which RLS
+  policies are never evaluated and every request fails with 42501 (see
+  `20260919130000_grant_authenticated_role.sql`).
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.
