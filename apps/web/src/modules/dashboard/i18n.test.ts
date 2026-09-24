@@ -102,15 +102,35 @@ test("signal, status, reason and group labels resolve in every language", async 
   }
 });
 
-test("the dashboard no longer promises market and scheme guidance later", async () => {
-  // The briefing now carries both, so the old notice would read as false.
+test("the dashboard notice never calls a shipped module unconnected", async () => {
+  // This notice was written when most of the app was scaffolding, and it
+  // quietly went stale: it was still telling farmers that buyers,
+  // reports and voice were not connected after all three had shipped.
+  // The earlier version of this test only watched for "market" and
+  // "scheme", so it let three false claims through. Every module that
+  // exists is listed here, and the list is what the test checks.
+  const SHIPPED = [
+    "market", "scheme", "buyer", "marketplace", "report", "voice",
+    "pest", "weather", "soil", "scan", "diagnos", "chat"
+  ];
+  const UNCONNECTED = /not connected|coming soon|not yet|planned for|later phase|will be added/i;
+
   for (const lang of LANGS) {
     await i18n.changeLanguage(lang);
     const text = i18n.t("dashboard.agentsComingSoon");
-    assert.notEqual(text, "dashboard.agentsComingSoon");
-    if (lang === "en") {
-      assert.ok(!/market/i.test(text), "still mentions market as pending");
-      assert.ok(!/scheme/i.test(text), "still mentions schemes as pending");
+    assert.notEqual(text, "dashboard.agentsComingSoon", `${lang} did not resolve`);
+    assert.ok(!text.includes("{{"), `${lang} left a placeholder`);
+
+    if (lang !== "en") continue;
+    // A module may be named, or the notice may say something is pending
+    // — but not both, because everything in SHIPPED is live.
+    const named = SHIPPED.filter((m) => new RegExp(m, "i").test(text));
+    if (UNCONNECTED.test(text)) {
+      assert.deepEqual(
+        named,
+        [],
+        `the notice says something is pending while naming shipped module(s): ${named.join(", ")}`
+      );
     }
   }
 });

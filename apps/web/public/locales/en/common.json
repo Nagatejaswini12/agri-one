@@ -11,7 +11,7 @@
     "scanCrop": "Scan Crop",
     "weather": "Weather & Advisory",
     "soilWater": "Soil & Water",
-    "pestAlerts": "Pest Alerts",
+    "pestAlerts": "Pest Activity",
     "market": "Market Analysis",
     "marketplace": "Marketplace",
     "schemes": "Govt. Schemes",
@@ -26,7 +26,7 @@
     },
     "protect": {
       "title": "Protect",
-      "description": "Crop scanning and pest alerts."
+      "description": "Crop scanning and pest activity."
     },
     "sell": {
       "title": "Sell",
@@ -184,7 +184,7 @@
     "switchFarm": "Switch farm",
     "soilSummary": "Soil",
     "viewSoil": "View soil data",
-    "agentsComingSoon": "Pest alerts, buyers and reports are not connected yet. Voice assistance is planned for a later phase."
+    "agentsComingSoon": "Every section of AGRI ONE is now connected to a live source or to your own records. Nothing here is a prediction, and nothing replaces advice from a qualified agricultural expert."
   },
   "scanHistory": {
     "empty": "No scans yet for this farm.",
@@ -521,6 +521,25 @@
       "farmersMarket": "Farmers' market",
       "regulatedYard": "Regulated market yard",
       "other": "Market"
+    }
+  },
+  "pestActivity": {
+    "title": "Pest Activity on Your Farm",
+    "intro": "This page shows pest findings from your own crop scans. Nothing here is predicted or guessed.",
+    "windowNote": "Showing scans from the last {{days}} days, newest first.",
+    "scannedOn": "Scanned on {{date}}",
+    "modelLabel": "Model finding",
+    "empty": "None of your recent scans found pest activity. That does not mean your farm is free of pests — only that the photos you scanned did not show any.",
+    "emptyNoScans": "You have not scanned any crops on this farm yet.",
+    "loadError": "Couldn't load your scans. Please try again.",
+    "seeAllScans": "See all scans",
+    "notPredicted": "AGRI ONE does not predict pest risk, and never uses weather to guess whether your farm has pests.",
+    "noTreatmentAdvice": "AGRI ONE does not give treatment advice and does not recommend any chemical. For what to do about a pest, speak to your local agricultural officer or use the official sources below.",
+    "resources": {
+      "title": "Official pest resources",
+      "intro": "Government sources for identifying and reporting pests. These pages are not controlled by AGRI ONE.",
+      "checkedOn": "Link checked on {{date}}",
+      "none": "No official pest resource is listed yet."
     }
   }
 }

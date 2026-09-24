@@ -19,7 +19,18 @@ void i18n
     lng: "en",
     fallbackLng: "en",
     defaultNS: "common",
-    interpolation: { escapeValue: false }
+    interpolation: { escapeValue: false },
+    react: {
+      // Re-render when a bundle is ADDED, not only when the language
+      // changes. loadLanguage() ends with changeLanguage(), which emits
+      // nothing when the language is already current -- so without this
+      // a late-arriving bundle can leave already-mounted components
+      // showing raw keys. The first paint is protected separately, by
+      // main.tsx awaiting the bundle before it renders at all; this
+      // covers the later loads, such as the one the profile triggers
+      // when a farmer's saved language differs from this device's.
+      bindI18nStore: "added"
+    }
   });
 
 export async function loadLanguage(lang: SupportedLanguage) {

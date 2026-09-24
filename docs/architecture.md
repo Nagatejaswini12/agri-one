@@ -554,6 +554,91 @@ wrong market.
   source published, variety and grade included. The grouping belongs to
   whoever compares, not to the workflow that fetches.
 
+## Phase 10 — Pest Activity, and the category the agent could not emit
+
+- **No workflow, no migration, no API, no credential.** The page reads
+  the `scans` rows the farmer already has, through the same RLS-scoped
+  `useScans` query Scan History uses, and filters them in the frontend.
+  Filtering client-side is safe here precisely because Supabase already
+  scoped the rows server-side; the filter is presentation, not
+  authorisation.
+- **It reports sightings, never risk.** Every line is something that
+  happened: a photo the farmer took, on a date, that the model
+  classified as a pest. There is no risk score, no severity, no
+  forecast, and **no weather input anywhere in the module** — deriving
+  "you probably have pests" from rainfall would be inventing a fact
+  about someone's field.
+- **The two empty states are deliberately different.** "You have not
+  scanned anything here" and "your scans found no pest activity" mean
+  very different things, and the second one says so out loud: *"That
+  does not mean your farm is free of pests — only that the photos you
+  scanned did not show any."* Absence of evidence in a farmer's photos
+  is not evidence of absence in their field, and collapsing the two
+  would read as a clean bill of health nobody issued.
+- **The uncertainty wording is borrowed, not rewritten.** The page
+  renders `scanCrop.confidenceLevel.*`, `scanCrop.modelEstimate` and
+  `scanCrop.notCalibratedNote` — the same strings the Crop Diagnosis
+  result screen uses — and passes the model's confidence through
+  untouched. Re-bucketing or rounding it would turn the model's own
+  score into a new claim made by this module.
+- **No chemical, dose or treatment, in any language.** For what to do
+  about a pest, the page sends the farmer to the officials whose job
+  that is. The curated directory links portal *homes*, never a deep link
+  into a page of chemical recommendations: where an official body
+  publishes that guidance, the farmer reaches it on that body's own
+  site, under that body's own name, which is where the decision belongs.
+- **National resources are allowed here, unlike Marketplace's selling
+  channels.** A national plant-protection authority genuinely serves
+  every state; a state's market does not. State entries still render
+  only in their own state.
+
+### The bug this phase found: `pest` was unreachable
+
+`DiagnosisCategory` has declared `"disease" | "pest" | "healthy" |
+"inconclusive"` since Phase 2, and `normalize.ts` has always accepted
+all four — but `Map Diagnosis Result` could only ever produce three. Its
+label router tested `/healthy/`, then a disease pattern, then fell
+through to `inconclusive`, and **`spider mites` was a literal term inside
+the disease pattern**. The model's one genuine arthropod class was filed
+as a pathogen, and a page filtering on `category === "pest"` would have
+been empty forever while telling farmers "no pest activity found".
+
+- `categoriseLabel(label)` is now a single named function used by both
+  the primary finding and the alternatives list. Those were two separate
+  copies of the same regexes before, which is how they could drift.
+- **Order is load-bearing.** The class is
+  `Tomato two spotted spider mites leaf`, which contains "spotted" — the
+  disease pattern's `/spot/` claims it if disease is tested first. Pest
+  is therefore tested before disease, and a test asserts exactly that.
+- **Separators are normalised first.** The same class appears as
+  `Tomato___Spider_mites_Two-spotted_spider_mite` in other exports, and
+  `_` is a word character, so `\bmites\b` silently failed and the label
+  fell through to "spotted" → disease. Both spellings now classify
+  identically, and a test pins the pair together.
+- Roboflow inference, the model, and every other classification path are
+  unchanged, and **no stored row was rewritten**: historical scans keep
+  the category they were written with, and only new scans use the
+  corrected routing.
+- `scripts/verify-diagnosis-categories.mjs` proves the classifier is
+  identical in the authored source, the exported JSON and the live
+  workflow, and that all four declared categories are reachable. This
+  check exists because the gap it guards went unnoticed for three
+  phases.
+
+### What this page cannot do, and why
+
+The classifier's only arthropod class is the two-spotted spider mite, so
+Pest Activity can surface that pest and nothing else. It is **not
+general pest detection**, and the model is weak on it in practice:
+seventeen real spider-mite photographs — from PlantVillage, PlantDoc and
+Wikimedia Commons, run through the live flow — were classified as
+mosaic virus, early blight, yellow virus or inconclusive, and not once
+as mites. The fix is verified by tests against the shipped classifier
+rather than by a captured pest scan, because no real photo available
+would produce one, and manufacturing a `scans` row to make the screen
+look populated would be exactly the fabrication this module exists to
+avoid.
+
 ## Hosting (Phase 8)
 
 - Frontend → Netlify.
