@@ -687,6 +687,37 @@ to a single module.
   could not be installed at all. The current marks are plain leaf shapes
   in the existing theme colour — replace them with real brand assets.
 
+## The artwork
+
+The agent icons and the dashboard hero come from supplied renders, not
+from anything generated here. Two things about them are worth recording,
+because both cost real time to work out.
+
+- **The renders arrived with the transparency checkerboard painted into
+  their pixels.** None of the eleven had a usable alpha channel: ten were
+  fully opaque with a grey chequer baked in, and the eleventh was a
+  glowing subject on a near-black scene. They are matted by keying on the
+  checker's two neutral tones and flood-filling from the border, with a
+  looser tolerance for reachability than for clearing — a strict fill is
+  blocked by the drop shadow and strands a halo of chequer around each
+  subject. The dark-scene one is keyed on luminance instead.
+- **Where the checker shows through translucent glass it is tinted**, so
+  it no longer matches either tone and the matte cannot see it. That
+  residue is removed with a median sized to the checker's period at the
+  shipped resolution. A frequency notch is the theoretically neat answer
+  and does not work here: the exported grids drift (squares run 41, 41,
+  38...), which smears the energy across a band too wide to remove
+  without eating the artwork.
+
+Shipped at 320px WebP with real alpha — about 216KB for seven icons,
+from 53MB of originals, which stay out of the bundle. The hero is
+re-encoded silent at 24fps to roughly half a megabyte with a poster
+frame, and is the only video in the build.
+
+Neither the icons nor the video are precached. They are decorative: a
+card without its picture still shows its name and its one line, and the
+offline shell is expected to work without them.
+
 ## Hosting
 
 - Frontend → Netlify.

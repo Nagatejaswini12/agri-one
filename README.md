@@ -101,6 +101,18 @@ and cannot be asked for.
   session.** The redirect cancels the in-flight global-logout call. The
   tokens are removed from the device regardless; the refresh token can
   stay valid server-side until it expires.
+- **Four modules show a placeholder tile.** My Farms, Pest Activity,
+  Marketplace and Reports (and Scan History under Tools) have no custom
+  artwork yet, so they render a plain frosted tile rather than borrowing
+  another module's picture. Deliberately obvious, and waiting on its own
+  assets.
+- **A faint checker residue survives inside the glass** on the Crop
+  Diagnosis, Market and Schemes icons. The supplied artwork was exported
+  with the transparency checkerboard painted into its pixels; where the
+  pattern shows through tinted glass it is no longer either of the two
+  tones the matte keys on, so it is cleared with a median sized to the
+  checker's period. Invisible at the size the icons are used, visible if
+  you zoom well past it.
 - **The agents depend on the n8n instance being within its plan limits.**
   When n8n cannot execute, every agent-backed panel degrades to
   "unavailable" rather than showing stale or invented values.

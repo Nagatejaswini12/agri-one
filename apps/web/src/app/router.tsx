@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/app/AppShell";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { NotFound } from "@/components/NotFound";
@@ -8,6 +8,7 @@ import ForgotPasswordPage from "@/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/auth/ResetPasswordPage";
 import DashboardPage from "@/modules/dashboard";
 import PlanHub from "@/app/PlanHub";
+import GrowHub from "@/app/GrowHub";
 import ProtectHub from "@/app/ProtectHub";
 import SellHub from "@/app/SellHub";
 import MoreHub from "@/app/MoreHub";
@@ -45,7 +46,9 @@ export const router = createBrowserRouter([
       // Stage hubs (PLAN → GROW → PROTECT → SELL). GROW has a single
       // module, so it links straight to Weather instead of a hub page.
       { path: "plan", element: <PlanHub /> },
-      { path: "grow", element: <Navigate to="/weather" replace /> },
+      // GROW is a stage section now rather than a redirect. /weather
+      // is unchanged and still reachable directly.
+      { path: "grow", element: <GrowHub /> },
       { path: "protect", element: <ProtectHub /> },
       { path: "sell", element: <SellHub /> },
       { path: "more", element: <MoreHub /> },

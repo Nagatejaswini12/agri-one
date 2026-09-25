@@ -1,17 +1,19 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NavIcon } from "@/components/NavIcon";
+import { AssistantButton } from "@/components/AssistantButton";
 import { useFarmerProfile, useSyncLanguageFromProfile } from "@/modules/profile/hooks";
 
 // Mirrors the report's PLAN → GROW → PROTECT → SELL journey. Home and More
 // sit outside that journey; Voice AI is reachable from anywhere via the
-// floating mic button rather than competing for a nav slot.
-const STAGE_NAV_ITEMS: { to: string; key: string }[] = [
-  { to: "/", key: "nav.dashboard" },
-  { to: "/plan", key: "nav.plan" },
-  { to: "/grow", key: "nav.grow" },
-  { to: "/protect", key: "nav.protect" },
-  { to: "/sell", key: "nav.sell" }
+// floating button rather than competing for a nav slot.
+const STAGE_NAV_ITEMS: { to: string; key: string; icon: string }[] = [
+  { to: "/", key: "nav.dashboard", icon: "dashboard" },
+  { to: "/plan", key: "nav.plan", icon: "plan" },
+  { to: "/grow", key: "nav.grow", icon: "grow" },
+  { to: "/protect", key: "nav.protect", icon: "protect" },
+  { to: "/sell", key: "nav.sell", icon: "sell" }
 ];
 
 export function AppShell() {
@@ -24,13 +26,13 @@ export function AppShell() {
   const onAssistantPage = useLocation().pathname === "/voice-ai";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-gray-50 to-gray-50">
       {/* The profile link shows the farmer's own name or email, and an
           email is long enough to push the language selector off the right
           edge of a phone — which made every screen in the app scroll
           sideways. The name truncates instead; the app title and the
           selector never shrink. */}
-      <header className="flex items-center justify-between gap-2 border-b bg-white px-4 py-3">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/60 bg-white/80 px-4 py-3 backdrop-blur">
         <span className="shrink-0 text-lg font-bold text-green-800">{t("appName")}</span>
         <div className="flex min-w-0 items-center justify-end gap-3">
           <NavLink
@@ -47,31 +49,36 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="pb-20">
+      <main className="pb-32">
         <Outlet />
       </main>
 
-      {onAssistantPage ? null : (
-        <NavLink
-          to="/voice-ai"
-          aria-label={t("nav.voiceAi")}
-          className="fixed bottom-20 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-2xl text-white shadow-lg"
-        >
-          🎙️
-        </NavLink>
-      )}
+      {onAssistantPage ? null : <AssistantButton />}
 
-      <nav className="fixed bottom-0 left-0 right-0 flex border-t bg-white">
-        {STAGE_NAV_ITEMS.map(({ to, key }) => (
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-white/60 bg-white/90 backdrop-blur"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        {STAGE_NAV_ITEMS.map(({ to, key, icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
             className={({ isActive }) =>
-              `flex-1 py-2 text-center text-xs ${isActive ? "font-semibold text-green-700" : "text-gray-500"}`
+              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition ${
+                isActive ? "font-semibold text-green-700" : "text-gray-500 hover:text-gray-700"
+              }`
             }
           >
-            {t(key)}
+            {({ isActive }) => (
+              <>
+                <NavIcon
+                  name={icon}
+                  className={`h-6 w-6 transition ${isActive ? "scale-110" : ""}`}
+                />
+                <span className="max-w-full truncate px-1">{t(key)}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

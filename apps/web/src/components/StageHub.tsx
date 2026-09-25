@@ -1,32 +1,34 @@
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-
-interface StageHubLink {
-  to: string;
-  labelKey: string;
-}
+import { AgentCard } from "@/components/AgentCard";
+import { tilesForStage, type Stage } from "@/app/agents";
 
 /**
- * Landing page for a PLAN/PROTECT/SELL/More stage grouping — the report's
- * PLAN → GROW → PROTECT → SELL framing maps to this nav structure instead
- * of a flat per-module list. GROW has a single module (Weather & Advisory)
- * so it links straight there instead of using this hub.
+ * Landing page for a PLAN/GROW/PROTECT/SELL stage.
+ *
+ * It now renders the same large artwork cards the dashboard uses, from
+ * the same registry, so a stage page and the home screen can never
+ * disagree about what a stage contains or what a module is called.
  */
-export function StageHub({ titleKey, descriptionKey, links }: { titleKey: string; descriptionKey: string; links: StageHubLink[] }) {
+export function StageHub({
+  stage,
+  titleKey,
+  descriptionKey
+}: {
+  stage: Stage;
+  titleKey: string;
+  descriptionKey: string;
+}) {
   const { t } = useTranslation();
+  const tiles = tilesForStage(stage);
+
   return (
-    <div className="p-6">
+    <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-5 sm:px-6">
       <h1 className="text-xl font-semibold">{t(titleKey)}</h1>
       <p className="mt-1 text-gray-600">{t(descriptionKey)}</p>
-      <div className="mt-4 grid gap-3">
-        {links.map(({ to, labelKey }) => (
-          <Link
-            key={to}
-            to={to}
-            className="rounded-lg border bg-white p-4 font-medium text-green-800 shadow-sm hover:bg-green-50"
-          >
-            {t(labelKey)}
-          </Link>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
+        {tiles.map((tile) => (
+          <AgentCard key={tile.id} tile={tile} />
         ))}
       </div>
     </div>

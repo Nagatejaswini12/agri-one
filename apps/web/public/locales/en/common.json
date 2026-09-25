@@ -36,6 +36,10 @@
     "more": {
       "title": "More",
       "description": "Schemes, reports and scan history."
+    },
+    "grow": {
+      "title": "Grow",
+      "description": "Weather, crop health and your assistant."
     }
   },
   "common": {
@@ -185,7 +189,11 @@
     "switchFarm": "Switch farm",
     "soilSummary": "Soil",
     "viewSoil": "View soil data",
-    "agentsComingSoon": "Every section of AGRI ONE is now connected to a live source or to your own records. Nothing here is a prediction, and nothing replaces advice from a qualified agricultural expert."
+    "agentsComingSoon": "Every section of AGRI ONE is now connected to a live source or to your own records. Nothing here is a prediction, and nothing replaces advice from a qualified agricultural expert.",
+    "heroAlt": "Farmland at sunrise",
+    "artworkPending": "Custom artwork for this module is still to come.",
+    "openModule": "Open {{name}}",
+    "supportTools": "Tools"
   },
   "scanHistory": {
     "empty": "No scans yet for this farm.",
@@ -547,5 +555,19 @@
     "title": "Page not found",
     "message": "That page does not exist. It may have been moved, or the link may be out of date.",
     "backHome": "Go to Home"
+  },
+  "agent": {
+    "farms": "Your land and crops",
+    "soil": "Your soil records",
+    "weather": "Forecast for your farm",
+    "diagnosis": "Scan a crop photo",
+    "pest": "Pest findings from your scans",
+    "schemes": "Government support to check",
+    "market": "Prices reported today",
+    "marketplace": "Where you can sell",
+    "voice": "Ask in your language",
+    "reports": "Your costs and harvests",
+    "scanHistory": "Your past scans",
+    "orchestrator": "Today's farm briefing"
   }
 }

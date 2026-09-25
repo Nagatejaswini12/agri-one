@@ -146,7 +146,13 @@ function BriefingView({ data, asOf }: { data: FarmBriefing; asOf: string }) {
   );
 }
 
-export function Briefing({ farm }: { farm: Farm }) {
+/**
+ * `hideHeading` lets the dashboard present the briefing inside its own
+ * titled card without printing the same title twice. Presentation only —
+ * nothing about which signals are fetched or how they are rendered
+ * changes.
+ */
+export function Briefing({ farm, hideHeading = false }: { farm: Farm; hideHeading?: boolean }) {
   const { t } = useTranslation();
   const { data: crops } = useFarmCrops(farm.id);
   const { data: soilRecords } = useSoilRecords(farm.id);
@@ -176,10 +182,12 @@ export function Briefing({ farm }: { farm: Farm }) {
   );
 
   return (
-    <section className="mt-6">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-        {t("decision.title")}
-      </h2>
+    <section className={hideHeading ? "" : "mt-6"}>
+      {hideHeading ? null : (
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          {t("decision.title")}
+        </h2>
+      )}
 
       {/* The market signal covers exactly one crop. Naming it — and
           letting the farmer switch it — is the alternative to implying
