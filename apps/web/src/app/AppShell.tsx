@@ -25,13 +25,22 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between border-b bg-white px-4 py-3">
-        <span className="text-lg font-bold text-green-800">{t("appName")}</span>
-        <div className="flex items-center gap-3">
-          <NavLink to="/profile" className="text-sm font-medium text-gray-600">
-            {profile?.name || profile?.email || t("nav.dashboard")}
+      {/* The profile link shows the farmer's own name or email, and an
+          email is long enough to push the language selector off the right
+          edge of a phone — which made every screen in the app scroll
+          sideways. The name truncates instead; the app title and the
+          selector never shrink. */}
+      <header className="flex items-center justify-between gap-2 border-b bg-white px-4 py-3">
+        <span className="shrink-0 text-lg font-bold text-green-800">{t("appName")}</span>
+        <div className="flex min-w-0 items-center justify-end gap-3">
+          <NavLink
+            to="/profile"
+            className="min-w-0 truncate text-sm font-medium text-gray-600"
+            title={profile?.name || profile?.email || undefined}
+          >
+            {profile?.name || profile?.email || t("nav.profile")}
           </NavLink>
-          <NavLink to="/more" className="text-sm font-medium text-gray-600">
+          <NavLink to="/more" className="shrink-0 text-sm font-medium text-gray-600">
             {t("nav.more")}
           </NavLink>
           <LanguageSwitcher />

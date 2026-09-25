@@ -145,7 +145,8 @@
           "name": "Query Auth account"
         }
       },
-      "notes": "The data.gov.in key lives only in the n8n Query Auth credential (parameter name \"api-key\"). It is never in this JSON, never in .env, never in the repo. Filters are exact string matches on the resource field ids."
+      "notes": "The data.gov.in key lives only in the n8n Query Auth credential (parameter name \"api-key\"). It is never in this JSON, never in .env, never in the repo. Filters are exact string matches on the resource field ids.",
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {

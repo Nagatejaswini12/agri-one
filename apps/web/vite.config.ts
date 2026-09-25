@@ -10,7 +10,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico"],
       manifest: {
         name: "AGRI ONE",
         short_name: "AGRI ONE",
@@ -19,10 +18,24 @@ export default defineConfig({
         background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
-        icons: []
+        // Chrome will not offer "Install" without a 192 and a 512 icon,
+        // so with an empty array the PWA could not be installed at all.
+        // These are plain placeholder marks in the existing theme
+        // colour, not a brand identity — replace them with real assets.
+        icons: [
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" }
+        ]
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/api/]
+        navigateFallbackDenylist: [/^\/api/],
+        // The locale bundles MUST be precached. i18n starts with no
+        // resources and fetches them at boot, so without this an offline
+        // launch fails that fetch and the farmer gets a screen of raw
+        // keys — the offline shell is only useful if it can speak.
+        // They are static text; a new deployment revisions them.
+        globPatterns: ["**/*.{js,css,html,ico,json}"]
       }
     })
   ],

@@ -193,7 +193,8 @@
       "position": [
         1120,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -300,7 +301,8 @@
       "position": [
         1120,
         384
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -392,7 +394,8 @@
       "position": [
         1120,
         768
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -490,7 +493,8 @@
       "position": [
         1120,
         1152
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {

@@ -1,15 +1,53 @@
-# n8n (self-hosted, local dev)
+# n8n
+
+Every agent workflow lives here. The deployed instance is **n8n Cloud**;
+the Docker Compose file remains for running a local instance against the
+same exported definitions.
 
 1. `cp .env.example .env` and set a basic-auth password (leave the API keys
    blank until you have real credentials — workflows must handle missing
    keys by returning an "unavailable" result, never fake data).
 2. `docker compose up -d`
 3. Open http://localhost:5678 and log in with the credentials from `.env`.
-4. Workflows are exported to `workflows/*.json` as they're built (Phase 2+)
-   so they're versioned alongside the app, not only stored inside n8n.
+4. Workflows are exported to `workflows/*.json` so they are versioned
+   alongside the app, not only stored inside n8n.
 
-No Orchestrator exists yet — this folder started as scaffolding only
-(Phase 0).
+## Keeping the exports honest
+
+`node scripts/verify-workflows-live.mjs` (from the repo root) compares
+**every** exported JSON against the live instance: node set, parameters,
+type versions, `onError`, connections and the active flag. Run it after
+any edit made in the n8n UI.
+
+It exists because the exports had silently drifted: **no export carried
+the per-node `onError` setting**, even though the live workflows all set
+`continueRegularOutput` on their agent calls (and `continueErrorOutput`
+on the AGMARKNET fetch). Re-importing those exports into a fresh
+instance would have produced workflows *without* failure isolation, so a
+single failing agent would have failed the whole briefing instead of
+returning a partial one. The exports now carry it.
+
+### Exports that are not deployed
+
+Two files describe workflows that are not live, kept as reference:
+
+- `crop-diagnosis-webhook.json` (`Crop Diagnosis - Webhook`) — superseded
+  by `Crop Diagnosis API`, which owns the `crop-diagnosis` path. Do not
+  import it alongside the API workflow; both claim the same path.
+- `crop-diagnosis-mcp-tool.json` (`Crop Diagnosis - MCP Tool`) — a
+  planned MCP exposure that was never deployed.
+
+### Live workflows that are not part of the app
+
+`My workflow` (`C0SJkMQHUEcx8EUq`) and `My workflow 3`
+(`n8SBAdLcBJqPOoaE`) are experiments on random UUID webhook paths that
+have **never executed**, and `Crop Diagnosis Test` (`5UtniTKIjCURm4uo`)
+is inactive. They collide with nothing, but they are cleanup candidates.
+
+`My workflow 2` is **not** a leftover despite the name — it is the
+weather MCP tool (`weather-mcp-tool.json`). Renaming it in n8n would
+make that obvious; the export's `name` must be updated to match if you
+do.
 
 ## Weather Agent (Phase 3)
 

@@ -58,6 +58,18 @@ export function useUpdatePreferredLanguage() {
         .eq("id", user.id);
       if (error) throw error;
     },
+    // The farmer's choice has to win immediately. The write to Supabase
+    // takes a moment, and anything that reads the profile in that window
+    // — a reload, a refetch, a remount — would otherwise read the OLD
+    // preference, and useSyncLanguageFromProfile would switch the app
+    // back to it. Putting the new value in the cache first closes that
+    // window; the invalidate below then reconciles with the server.
+    onMutate: (language: SupportedLanguage) => {
+      queryClient.setQueryData<Farmer | null>(
+        [FARMER_PROFILE_KEY, user?.id],
+        (prev) => (prev ? { ...prev, preferredLanguage: language } : prev)
+      );
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [FARMER_PROFILE_KEY] });
     }

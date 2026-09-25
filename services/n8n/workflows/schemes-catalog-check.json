@@ -80,7 +80,8 @@
         0
       ],
       "notesInFlow": true,
-      "notes": "Reachability only. neverError plus continueRegularOutput keep a dead link on the normal output so the report can name it, instead of failing the run at the first broken URL."
+      "notes": "Reachability only. neverError plus continueRegularOutput keep a dead link on the normal output so the report can name it, instead of failing the run at the first broken URL.",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {

@@ -17,7 +17,8 @@
     "schemes": "Govt. Schemes",
     "reports": "Reports",
     "scanHistory": "Scan History",
-    "voiceAi": "Voice AI"
+    "voiceAi": "Voice AI",
+    "profile": "Profile"
   },
   "stages": {
     "plan": {
@@ -541,5 +542,10 @@
       "checkedOn": "Link checked on {{date}}",
       "none": "No official pest resource is listed yet."
     }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "message": "That page does not exist. It may have been moved, or the link may be out of date.",
+    "backHome": "Go to Home"
   }
 }

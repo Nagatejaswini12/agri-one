@@ -242,6 +242,19 @@ row-level security, exactly like Soil & Water: every value is the
 farmer's own entry, so there is no external source to orchestrate and
 nothing for an agent to fetch.
 
+### Pest Activity — no webhook
+
+Pest Activity has no n8n endpoint either. It reads the `scans` rows the
+farmer already owns, through the same RLS-scoped query Scan History
+uses, and filters them to `primaryFinding.category === "pest"` in the
+frontend. There is no pest feed to fetch and nothing to orchestrate: the
+only external references on the page are links to a curated directory of
+official resources, which is a static frontend constant.
+
+Filtering client-side is safe here specifically because Supabase has
+already scoped the rows server-side — the filter is presentation, not
+authorisation.
+
 ## Planned, in build order
 
 1. `POST /webhook/soil` — Soil Agent (Soil & Water is farmer-entered

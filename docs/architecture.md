@@ -639,7 +639,55 @@ would produce one, and manufacturing a `scans` row to make the screen
 look populated would be exactly the fabrication this module exists to
 avoid.
 
-## Hosting (Phase 8)
+## The app shell: language, routing and offline
+
+These are cross-cutting and easy to regress, because none of them belong
+to a single module.
+
+- **The language bundle is loaded before the first render.** i18n starts
+  with no resources at all and fetches the bundle at boot, so rendering
+  first painted every screen with raw keys — `nav.pestAlerts` instead of
+  "Pest Activity". That was supposed to correct itself, but
+  `loadLanguage()` finishes by calling `changeLanguage()` with the
+  language i18next already has, which emits no `languageChanged` event,
+  so components that had already mounted never re-rendered and the raw
+  keys stayed. It reproduced on roughly one page load in five.
+  `main.tsx` now awaits the bundle before `createRoot`, and
+  `react-i18next` additionally binds to the store's `added` event for the
+  later load the profile triggers when a farmer's saved language differs
+  from this device's. A failed fetch still renders: an app in the wrong
+  language beats a blank page. Guarded by `src/i18n/boot.test.ts`.
+- **Sign-out clears the device, and may not revoke the server session.**
+  `supabase.auth.signOut()` clears the local session first and emits
+  `SIGNED_OUT`, so the route guard redirects immediately — which cancels
+  the in-flight `logout?scope=global` call. The tokens are gone from the
+  device either way, which is what protects a shared phone, but the
+  refresh token can remain valid server-side until it expires. Closing
+  that would mean holding the redirect until the network call resolves,
+  which is a change to the auth flow rather than a fix to this one call.
+- **Unknown URLs render a page, not nothing.** Without a catch-all route
+  react-router matched nothing and rendered nothing, so a typo, a stale
+  bookmark or an old PWA shortcut left a farmer on a blank white screen
+  with no way back. `{ path: "*" }` renders `NotFound` inside the shell,
+  so the nav is still there.
+- **The header truncates rather than overflowing.** It carries the
+  farmer's own name or email, and an email is long enough to push the
+  language selector past the right edge of a phone, which made *every*
+  screen scroll sideways at 390px.
+- **The PWA precaches the shell and all four locale bundles — and
+  nothing else.** Live farm, weather and market data are never cached:
+  they must be re-fetched and are allowed to report "unavailable". The
+  locale bundles are cached precisely because the shell is useless
+  offline if it cannot speak: without them an offline launch fails the
+  bundle fetch and shows raw keys. `skipWaiting`, `clientsClaim` and
+  `cleanupOutdatedCaches` are on, so a new deployment cannot leave a
+  farmer pinned to an old bundle.
+- **Icons are placeholders.** Chrome will not offer "Install" without a
+  192px and a 512px icon, and the manifest declared none, so the app
+  could not be installed at all. The current marks are plain leaf shapes
+  in the existing theme colour — replace them with real brand assets.
+
+## Hosting
 
 - Frontend → Netlify.
 - n8n + Supabase are hosted separately from the frontend deployment.

@@ -21,7 +21,15 @@ export function LanguageSwitcher() {
     setLanguage(lang);
     await loadLanguage(lang);
     if (status === "signed-in") {
-      updatePreferredLanguage.mutate(lang);
+      // Awaited on purpose. Supabase is the source of truth for the
+      // farmer's language, and on the next full load the app reads it
+      // back. Firing this off unawaited left a window where a reload —
+      // or the PWA relaunching — read the OLD preference and switched
+      // the farmer back to a language they had just left. A failed write
+      // must not undo the switch they can already see, so the error is
+      // swallowed: the local switch stands and the next successful
+      // change will persist it.
+      await updatePreferredLanguage.mutateAsync(lang).catch(() => {});
     }
   }
 
@@ -34,7 +42,7 @@ export function LanguageSwitcher() {
         id="language-select"
         value={language}
         onChange={(e) => void handleChange(e.target.value as (typeof SUPPORTED_LANGUAGES)[number]["code"])}
-        className="rounded border px-2 py-1 text-sm"
+        className="shrink-0 rounded border px-2 py-1 text-sm"
       >
         {SUPPORTED_LANGUAGES.map(({ code, label }) => (
           <option key={code} value={code}>

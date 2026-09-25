@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/app/AppShell";
 import { RequireAuth } from "@/auth/RequireAuth";
+import { NotFound } from "@/components/NotFound";
 import SignInPage from "@/auth/SignInPage";
 import SignUpPage from "@/auth/SignUpPage";
 import ForgotPasswordPage from "@/auth/ForgotPasswordPage";
@@ -61,7 +62,10 @@ export const router = createBrowserRouter([
       { path: "schemes", element: <SchemesPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "scan-history", element: <ScanHistoryPage /> },
-      { path: "voice-ai", element: <VoiceAiPage /> }
+      { path: "voice-ai", element: <VoiceAiPage /> },
+      // Without this, an unknown URL matched no route and rendered a
+      // blank page with no way back.
+      { path: "*", element: <NotFound /> }
     ]
   }
 ]);
