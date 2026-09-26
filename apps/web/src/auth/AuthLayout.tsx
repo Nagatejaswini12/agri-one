@@ -24,10 +24,19 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
       </header>
       <main className="relative flex flex-1 items-center justify-center p-4">
         {/* One slow emerald field, so the sign-in screen is not a flat
-            dark rectangle. Decorative only. */}
+            dark rectangle. Decorative only.
+            Centred with margins rather than a transform: `drift` sets
+            `transform` itself, which replaced `-translate-x-1/2`
+            outright and left a 384px circle starting at the middle of
+            the screen — 193px of sideways scroll on a phone, on the
+            first page anyone sees. `inset-x-0 mx-auto` cannot be
+            overridden that way.
+            It is also smaller below `sm`, because drift scales to 1.06
+            and a 384px circle would still exceed a 390px viewport once
+            scaled even when perfectly centred. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-1/3 h-96 w-96 -translate-x-1/2 rounded-full bg-agri-emerald/10 blur-3xl animate-drift"
+          className="pointer-events-none absolute inset-x-0 top-1/3 mx-auto h-72 w-72 rounded-full bg-agri-emerald/10 blur-3xl animate-drift sm:h-96 sm:w-96"
         />
         <div className="agri-card relative w-full max-w-sm p-6">{children}</div>
       </main>
