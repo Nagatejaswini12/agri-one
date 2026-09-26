@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Farm, WeatherSnapshot, DataResult } from "@agri-one/shared-types";
-import { callAgentWebhook } from "@/lib/n8nClient";
+import { callWeatherApi } from "@/lib/weatherClient";
 import { normalizeWeatherResult } from "@/modules/weather/normalize";
 import { useAuth } from "@/auth/AuthProvider";
 import { useAppStore } from "@/stores/useAppStore";
@@ -19,6 +19,12 @@ const STALE_TIME_MS = 10 * 60 * 1000;
  *
  * Nothing is persisted: weather is read live on each view (see
  * docs/architecture.md), so there is no Supabase table behind this.
+ *
+ * The reading now comes from this project's own /api/weather, which
+ * calls Open-Meteo directly. Weather therefore keeps working with real
+ * live data while n8n Cloud is out of executions. The request payload,
+ * the DataResult contract and every state this hook can return are
+ * unchanged, so the page did not need redesigning.
  */
 export function useWeather(farm: Farm | undefined) {
   const { status } = useAuth();
@@ -34,7 +40,7 @@ export function useWeather(farm: Farm | undefined) {
     staleTime: STALE_TIME_MS,
     queryFn: async (): Promise<DataResult<WeatherSnapshot>> =>
       normalizeWeatherResult(
-        await callAgentWebhook<unknown>("weather", {
+        await callWeatherApi<unknown>({
           latitude,
           longitude,
           locale: language
