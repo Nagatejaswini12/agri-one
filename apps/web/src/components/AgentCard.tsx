@@ -41,6 +41,15 @@ export function AgentCard({ tile, compact = false }: { tile: AgentTile; compact?
       />
 
       <span className={`relative flex shrink-0 items-center justify-center ${artBox}`}>
+        {/* The halo is what integrates the artwork into a dark page. It
+            is the module's accent at low opacity, sitting behind a
+            transparent image, so the piece reads as lit by the
+            environment rather than pasted onto it. Purely decorative —
+            it carries no state and no value. */}
+        <span
+          aria-hidden="true"
+          className={`absolute inset-2 rounded-full blur-2xl transition-opacity duration-300 ${accent.glow} opacity-70 group-hover:opacity-100`}
+        />
         {tile.art ? (
           <img
             src={tile.art}
@@ -50,12 +59,12 @@ export function AgentCard({ tile, compact = false }: { tile: AgentTile; compact?
             decoding="async"
             width={320}
             height={320}
-            className="h-full w-full object-contain drop-shadow-sm transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="agri-art-glow relative h-full w-full object-contain transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
           <ModuleIcon
             id={tile.id}
-            className="h-full w-full drop-shadow-sm transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="agri-art-glow relative h-full w-full transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         )}
       </span>
@@ -67,7 +76,7 @@ export function AgentCard({ tile, compact = false }: { tile: AgentTile; compact?
           laid out against. */}
       <span className="relative flex min-w-0 flex-col">
         <span
-          className={`line-clamp-2 font-semibold text-agri-forest ${
+          className={`line-clamp-2 font-semibold text-agri-bright ${
             compact ? "text-sm" : "text-sm sm:text-base lg:text-lg"
           }`}
         >
@@ -76,7 +85,7 @@ export function AgentCard({ tile, compact = false }: { tile: AgentTile; compact?
         {/* Three lines from `lg`, where the artwork is at its largest and
             leaves the text the least room. Two lines held the English
             blurbs but cut the Tamil ones mid-sentence. */}
-        <span className="mt-0.5 line-clamp-2 text-xs text-gray-600 sm:text-sm lg:line-clamp-3">
+        <span className="mt-0.5 line-clamp-2 text-xs text-agri-mist sm:text-sm lg:line-clamp-3">
           {t(tile.descKey)}
         </span>
       </span>

@@ -12,6 +12,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
+import { PageHero } from "@/components/PageHero";
 
 /** Same mapping the briefing uses, so a chip leads where a farmer expects. */
 const SOURCE_ROUTE: Record<DecisionSourceAgent, string> = {
@@ -38,7 +39,7 @@ function SourceChips({ sources }: { sources: DecisionSourceAgent[] }) {
         <Link
           key={s}
           to={SOURCE_ROUTE[s]}
-          className="text-xs font-medium text-green-700 underline"
+          className="text-xs font-medium text-agri-emerald underline"
         >
           {t(`decision.signal.${s}`)} ›
         </Link>
@@ -125,15 +126,23 @@ export default function VoiceAiPage() {
     ask.data && ask.data.status === "unavailable" ? ask.data.reason : null;
 
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-semibold">{t("chat.title")}</h1>
-        <span className="text-xs text-gray-500">
-          {t("chat.languageIndicator", { language: languageLabel })}
-        </span>
-      </div>
+    <div className="mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-4xl flex-col px-4 pb-6 pt-4 sm:px-6">
+      {/* Gradient rather than footage: the only clip supplied for this
+          page is byte-identical to the crop-scanning one, and crop
+          scanning is not what the assistant does. */}
+      <PageHero
+        id="voice"
+        titleKey="chat.title"
+        descKey="agent.voice"
+        art="/agents/voice.webp"
+        status={
+          <span className="agri-eyebrow text-agri-pink">
+            {t("chat.languageIndicator", { language: languageLabel })}
+          </span>
+        }
+      />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -146,17 +155,17 @@ export default function VoiceAiPage() {
           {/* Capability notices. Never silence: if the device cannot
               speak or listen, the farmer is told why. */}
           {!speech.canRecognise ? (
-            <p className="mt-3 rounded border border-dashed p-2 text-xs text-gray-600">
+            <p className="mt-3 rounded border border-dashed p-2 text-xs text-agri-mist">
               {t("chat.speechUnsupported")}
             </p>
           ) : null}
           {!speech.canSynthesise ? (
-            <p className="mt-2 rounded border border-dashed p-2 text-xs text-gray-600">
+            <p className="mt-2 rounded border border-dashed p-2 text-xs text-agri-mist">
               {t("chat.ttsUnavailable", { language: languageLabel })}
             </p>
           ) : null}
           {speech.recognitionError ? (
-            <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+            <p className="mt-2 rounded border border-agri-amber/30 bg-agri-amber/10 p-2 text-xs text-agri-amber">
               {t(`chat.recognitionError.${speech.recognitionError}`, {
                 defaultValue: t("chat.recognitionError.unknown")
               })}
@@ -167,7 +176,7 @@ export default function VoiceAiPage() {
               is never hidden behind it. */}
           <div className="mt-4 flex-1 space-y-3 pb-28" aria-live="polite">
             {messages.length === 0 && !ask.isPending ? (
-              <div className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
+              <div className="rounded-lg border border-dashed p-4 text-sm text-agri-mist">
                 <p className="font-medium">{t("chat.helpTitle")}</p>
                 <p className="mt-1 whitespace-pre-line">{t("chat.helpBody")}</p>
               </div>
@@ -178,8 +187,8 @@ export default function VoiceAiPage() {
                 key={m.id}
                 className={
                   m.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-lg bg-green-700 p-3 text-sm text-white"
-                    : "mr-auto max-w-[90%] rounded-lg border bg-white p-3 text-sm"
+                    ? "ml-auto max-w-[85%] rounded-lg bg-agri-emerald p-3 text-sm font-medium text-agri-night"
+                    : "agri-card mr-auto max-w-[90%] p-3 text-sm text-agri-mist"
                 }
               >
                 <p className="whitespace-pre-line">{m.text}</p>
@@ -190,13 +199,13 @@ export default function VoiceAiPage() {
             ))}
 
             {ask.isPending ? (
-              <p className="mr-auto rounded-lg border bg-white p-3 text-sm text-gray-500">
+              <p className="mr-auto rounded-lg border bg-agri-bark p-3 text-sm text-agri-muted">
                 {t("chat.thinking")}
               </p>
             ) : null}
 
             {speech.interim ? (
-              <p className="ml-auto max-w-[85%] rounded-lg bg-green-100 p-3 text-sm italic text-green-900">
+              <p className="ml-auto max-w-[85%] rounded-lg bg-agri-emerald/15 p-3 text-sm italic text-agri-emerald">
                 {speech.interim}
               </p>
             ) : null}
@@ -210,7 +219,7 @@ export default function VoiceAiPage() {
               <button
                 type="button"
                 onClick={() => void send(lastQuestion)}
-                className="rounded border px-3 py-1 text-sm font-medium text-green-700"
+                className="rounded border px-3 py-1 text-sm font-medium text-agri-emerald"
               >
                 {t("chat.retry")}
               </button>
@@ -223,14 +232,14 @@ export default function VoiceAiPage() {
             <button
               type="button"
               onClick={speech.stopSpeaking}
-              className="mt-3 self-start rounded border px-3 py-1 text-sm font-medium text-green-700"
+              className="mt-3 self-start rounded border px-3 py-1 text-sm font-medium text-agri-emerald"
             >
               {t("chat.stopSpeaking")}
             </button>
           ) : null}
 
           <form
-            className="sticky bottom-16 mt-4 flex items-end gap-2 bg-gray-50 pt-2"
+            className="sticky bottom-16 mt-4 flex items-end gap-2 bg-white/5 pt-2"
             onSubmit={(e) => {
               e.preventDefault();
               void send(draft);
@@ -260,7 +269,9 @@ export default function VoiceAiPage() {
                     : speech.startListening((text) => void send(text))
                 }
                 className={`h-10 w-10 shrink-0 rounded-full text-lg ${
-                  speech.listening ? "bg-red-600 text-white" : "bg-white text-green-700 border"
+                  speech.listening
+                    ? "bg-agri-coral text-agri-night ring-2 ring-agri-coral/40"
+                    : "border border-white/12 bg-white/5 text-agri-emerald"
                 }`}
               >
                 🎙️
@@ -270,7 +281,7 @@ export default function VoiceAiPage() {
             <button
               type="submit"
               disabled={draft.trim() === "" || ask.isPending}
-              className="h-10 shrink-0 rounded bg-green-700 px-4 text-sm font-medium text-white disabled:opacity-50"
+              className="agri-button h-10 shrink-0 px-4 py-0 text-sm"
             >
               {t("chat.send")}
             </button>

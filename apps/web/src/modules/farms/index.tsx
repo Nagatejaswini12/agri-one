@@ -5,7 +5,7 @@ import { useFarms, useCreateFarm } from "@/modules/farms/hooks";
 import { FarmForm } from "@/modules/farms/FarmForm";
 import { EmptyState } from "@/components/EmptyState";
 import { useAppStore } from "@/stores/useAppStore";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
 
 export default function FarmsPage() {
   const { t } = useTranslation();
@@ -17,10 +17,10 @@ export default function FarmsPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="farms" titleKey="nav.farms" descKey="agent.farms" />
+      <PageHero id="farms" titleKey="nav.farms" descKey="agent.farms" />
 
-      {isLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
-      {isError ? <p className="mt-4 text-red-600">{t("farms.loadError")}</p> : null}
+      {isLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
+      {isError ? <p className="mt-4 text-agri-coral">{t("farms.loadError")}</p> : null}
 
       {!isLoading && !isError && farms && farms.length === 0 && !showForm ? (
         <div className="mt-4">
@@ -31,12 +31,12 @@ export default function FarmsPage() {
       {!isLoading && !isError && farms && farms.length > 0 ? (
         <ul className="mt-4 space-y-2">
           {farms.map((farm) => (
-            <li key={farm.id} className="flex items-center justify-between rounded-lg border bg-white p-4">
+            <li key={farm.id} className="flex items-center justify-between rounded-lg border bg-agri-bark p-4">
               <div>
-                <Link to={`/farms/${farm.id}`} className="font-medium text-green-800">
+                <Link to={`/farms/${farm.id}`} className="font-medium text-agri-emerald">
                   {farm.name}
                 </Link>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-agri-muted">
                   {[farm.district, farm.state].filter(Boolean).join(", ") || t("farms.locationNotSet")}
                 </p>
               </div>
@@ -44,7 +44,7 @@ export default function FarmsPage() {
                 type="button"
                 onClick={() => setActiveFarmId(farm.id)}
                 disabled={activeFarmId === farm.id}
-                className="rounded border px-3 py-1.5 text-sm font-medium text-green-700 disabled:opacity-40"
+                className="rounded border px-3 py-1.5 text-sm font-medium text-agri-emerald disabled:opacity-40"
               >
                 {activeFarmId === farm.id ? t("farms.selected") : t("farms.select")}
               </button>
@@ -57,12 +57,12 @@ export default function FarmsPage() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="mt-4 rounded bg-green-700 px-4 py-2 font-medium text-white"
+          className="mt-4 agri-button"
         >
           {t("farms.add")}
         </button>
       ) : (
-        <div className="mt-4 rounded-lg border bg-white p-4">
+        <div className="mt-4 rounded-lg border bg-agri-bark p-4">
           <FarmForm
             pending={createFarm.isPending}
             submitLabel={t("farms.add")}
@@ -71,7 +71,7 @@ export default function FarmsPage() {
               setShowForm(false);
             }}
           />
-          {createFarm.isError ? <p className="mt-2 text-sm text-red-600">{t("farms.saveError")}</p> : null}
+          {createFarm.isError ? <p className="mt-2 text-sm text-agri-coral">{t("farms.saveError")}</p> : null}
         </div>
       )}
     </div>

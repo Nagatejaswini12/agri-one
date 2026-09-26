@@ -36,7 +36,7 @@ export default function SignInPage() {
       <h1 className="text-lg font-semibold">{t("auth.signIn")}</h1>
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-4">
         <div>
-          <label htmlFor="signin-email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="signin-email" className="block text-sm font-medium text-agri-mist">
             {t("auth.email")}
           </label>
           <input
@@ -46,11 +46,11 @@ export default function SignInPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
         <div>
-          <label htmlFor="signin-password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="signin-password" className="block text-sm font-medium text-agri-mist">
             {t("auth.password")}
           </label>
           <input
@@ -60,28 +60,28 @@ export default function SignInPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="w-full agri-button"
         >
           {pending ? t("auth.signingIn") : t("auth.signIn")}
         </button>
       </form>
       <p className="mt-4 text-center text-sm">
-        <Link to="/forgot-password" className="font-medium text-green-700 underline">
+        <Link to="/forgot-password" className="font-medium text-agri-emerald underline">
           {t("auth.forgotPassword")}
         </Link>
       </p>
-      <p className="mt-2 text-center text-sm text-gray-600">
+      <p className="mt-2 text-center text-sm text-agri-mist">
         {t("auth.noAccount")}{" "}
-        <Link to="/sign-up" className="font-medium text-green-700 underline">
+        <Link to="/sign-up" className="font-medium text-agri-emerald underline">
           {t("auth.signUp")}
         </Link>
       </p>

@@ -55,9 +55,9 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
   }
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="mt-2 space-y-3 rounded-lg border bg-white p-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="mt-2 space-y-3 rounded-lg border bg-agri-bark p-4">
       <fieldset>
-        <legend className="text-sm font-medium text-gray-700">{t("reports.entryType")}</legend>
+        <legend className="text-sm font-medium text-agri-mist">{t("reports.entryType")}</legend>
         <div className="mt-1 flex gap-4">
           {(["cost", "revenue"] as const).map((option) => (
             <label key={option} className="flex items-center gap-2 text-sm">
@@ -75,14 +75,14 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
       </fieldset>
 
       <div>
-        <label htmlFor="financial-category" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="financial-category" className="block text-xs font-semibold text-agri-muted">
           {t("reports.category_label")}
         </label>
         <select
           id="financial-category"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         >
           {categories.map((c) => (
             <option key={c} value={c}>
@@ -93,7 +93,7 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
       </div>
 
       <div>
-        <label htmlFor="financial-amount" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="financial-amount" className="block text-xs font-semibold text-agri-muted">
           {t("reports.amount")}
         </label>
         <input
@@ -105,19 +105,19 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
           inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         />
       </div>
 
       <div>
-        <label htmlFor="financial-crop" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="financial-crop" className="block text-xs font-semibold text-agri-muted">
           {t("reports.crop")}
         </label>
         <select
           id="financial-crop"
           value={cropId}
           onChange={(e) => setCropId(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         >
           {/* Farm-level entries belong to no single crop. */}
           <option value="">{t("reports.wholeFarm")}</option>
@@ -130,7 +130,7 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
       </div>
 
       <div>
-        <label htmlFor="financial-date" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="financial-date" className="block text-xs font-semibold text-agri-muted">
           {t("reports.recordedOn")}
         </label>
         <input
@@ -139,12 +139,12 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
           required
           value={recordedOn}
           onChange={(e) => setRecordedOn(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         />
       </div>
 
       <div>
-        <label htmlFor="financial-notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="financial-notes" className="block text-xs font-semibold text-agri-muted">
           {t("reports.notes")}
         </label>
         <input
@@ -152,16 +152,16 @@ export function FinancialForm({ farmId, crops }: { farmId: string; crops: FarmCr
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         />
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
 
       <button
         type="submit"
         disabled={create.isPending}
-        className="w-full rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+        className="w-full agri-button"
       >
         {create.isPending ? t("common.saving") : t("reports.addEntry")}
       </button>

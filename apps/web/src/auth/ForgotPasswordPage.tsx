@@ -40,9 +40,9 @@ export default function ForgotPasswordPage() {
     return (
       <AuthLayout>
         <h1 className="text-lg font-semibold">{t("auth.resetLinkSentTitle")}</h1>
-        <p className="mt-2 text-sm text-gray-600">{t("auth.resetLinkSentBody")}</p>
+        <p className="mt-2 text-sm text-agri-mist">{t("auth.resetLinkSentBody")}</p>
         <p className="mt-4 text-center text-sm">
-          <Link to="/sign-in" className="font-medium text-green-700 underline">
+          <Link to="/sign-in" className="font-medium text-agri-emerald underline">
             {t("auth.backToSignIn")}
           </Link>
         </p>
@@ -53,11 +53,11 @@ export default function ForgotPasswordPage() {
   return (
     <AuthLayout>
       <h1 className="text-lg font-semibold">{t("auth.forgotPasswordTitle")}</h1>
-      <p className="mt-2 text-sm text-gray-600">{t("auth.forgotPasswordBody")}</p>
+      <p className="mt-2 text-sm text-agri-mist">{t("auth.forgotPasswordBody")}</p>
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-4">
         <div>
-          <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="forgot-email" className="block text-sm font-medium text-agri-mist">
             {t("auth.email")}
           </label>
           <input
@@ -67,23 +67,23 @@ export default function ForgotPasswordPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="w-full agri-button"
         >
           {pending ? t("auth.sendingResetLink") : t("auth.sendResetLink")}
         </button>
       </form>
 
       <p className="mt-4 text-center text-sm">
-        <Link to="/sign-in" className="font-medium text-green-700 underline">
+        <Link to="/sign-in" className="font-medium text-agri-emerald underline">
           {t("auth.backToSignIn")}
         </Link>
       </p>

@@ -11,8 +11,8 @@ export function NotFound() {
   return (
     <div className="p-6">
       <h1 className="text-xl font-semibold">{t("notFound.title")}</h1>
-      <p className="mt-2 text-gray-600">{t("notFound.message")}</p>
-      <Link to="/" className="mt-4 inline-block font-medium text-green-700 underline">
+      <p className="mt-2 text-agri-mist">{t("notFound.message")}</p>
+      <Link to="/" className="mt-4 inline-block font-medium text-agri-emerald underline">
         {t("notFound.backHome")}
       </Link>
     </div>

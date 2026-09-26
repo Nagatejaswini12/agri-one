@@ -32,13 +32,13 @@ export function AppShell() {
           right edge of a phone — which made every screen scroll
           sideways. The name truncates instead; the title and the
           selector never shrink. */}
-      <header className="sticky top-0 z-20 border-b border-white/60 bg-agri-ivory/85 backdrop-blur-sm">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-agri-night/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
           <NavLink to="/" className="flex shrink-0 items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-agri-forest to-agri-leaf text-[13px] font-bold text-white shadow-sm">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-agri-emerald to-agri-cyan text-[13px] font-bold text-agri-night shadow-[0_0_18px_-2px_rgba(52,211,153,0.6)]">
               A
             </span>
-            <span className="text-base font-bold tracking-tight text-agri-forest sm:text-lg">
+            <span className="text-base font-bold tracking-tight text-agri-bright sm:text-lg">
               {t("appName")}
             </span>
           </NavLink>
@@ -55,8 +55,8 @@ export function AppShell() {
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition ${
                     isActive
-                      ? "bg-agri-forest/8 font-semibold text-agri-forest"
-                      : "text-gray-600 hover:bg-white/70 hover:text-agri-forest"
+                      ? "bg-agri-emerald/15 font-semibold text-agri-emerald ring-1 ring-agri-emerald/25"
+                      : "text-agri-mist hover:bg-agri-bark/5 hover:text-agri-bright"
                   }`
                 }
               >
@@ -69,14 +69,14 @@ export function AppShell() {
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
             <NavLink
               to="/profile"
-              className="min-w-0 truncate text-sm font-medium text-gray-600 hover:text-agri-forest"
+              className="min-w-0 truncate text-sm font-medium text-agri-mist hover:text-agri-bright"
               title={profile?.name || profile?.email || undefined}
             >
               {profile?.name || profile?.email || t("nav.profile")}
             </NavLink>
             <NavLink
               to="/more"
-              className="shrink-0 text-sm font-medium text-gray-600 hover:text-agri-forest"
+              className="shrink-0 text-sm font-medium text-agri-mist hover:text-agri-bright"
             >
               {t("nav.more")}
             </NavLink>
@@ -93,7 +93,7 @@ export function AppShell() {
 
       {/* The phone bar. Hidden once the stages are in the header. */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-white/60 bg-agri-ivory/95 backdrop-blur-sm lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-20 flex border-t border-white/10 bg-agri-night/90 backdrop-blur-xl lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label={t("dashboard.journeyTitle")}
       >
@@ -104,7 +104,7 @@ export function AppShell() {
             end={to === "/"}
             className={({ isActive }) =>
               `relative flex flex-1 flex-col items-center gap-1 pb-2 pt-2.5 text-[11px] transition ${
-                isActive ? "font-semibold text-agri-forest" : "text-gray-500"
+                isActive ? "font-semibold text-agri-emerald" : "text-agri-muted"
               }`
             }
           >
@@ -115,7 +115,7 @@ export function AppShell() {
                     bright sun. */}
                 <span
                   className={`flex h-8 w-12 items-center justify-center rounded-full transition ${
-                    isActive ? "bg-agri-forest/10" : ""
+                    isActive ? "bg-agri-emerald/15 ring-1 ring-agri-emerald/25" : ""
                   }`}
                 >
                   <NavIcon name={icon} className="h-5 w-5" />

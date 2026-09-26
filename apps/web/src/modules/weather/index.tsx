@@ -6,7 +6,8 @@ import { useWeather } from "@/modules/weather/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 /** A value the source didn't report renders as a dash, never as 0. */
 function metric(value: number | null, unit: string): string {
@@ -34,13 +35,13 @@ function ForecastRow({ day }: { day: WeatherForecastDay }) {
             month: "short"
           })}
         </p>
-        <p className="truncate text-gray-500">{conditionLabel(day.weatherCode)}</p>
+        <p className="truncate text-agri-muted">{conditionLabel(day.weatherCode)}</p>
       </div>
       <div className="shrink-0 text-right">
         <p>
           {metric(day.temperatureMaxC, "°")} / {metric(day.temperatureMinC, "°")}
         </p>
-        <p className="text-gray-500">
+        <p className="text-agri-muted">
           {t("weather.rainChance", {
             percent: day.precipitationProbabilityMaxPct ?? "—"
           })}{" "}
@@ -58,41 +59,41 @@ function WeatherView({ data, asOf, source }: { data: WeatherSnapshot; asOf: stri
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="rounded-lg border bg-white p-4">
-        <h2 className="text-sm font-medium text-gray-700">{t("weather.currentConditions")}</h2>
+      <section className="rounded-lg border bg-agri-bark p-4">
+        <h2 className="text-sm font-medium text-agri-mist">{t("weather.currentConditions")}</h2>
         <p className="mt-1 text-3xl font-semibold">{metric(current.temperatureC, "°C")}</p>
-        <p className="text-gray-600">{conditionLabel(current.weatherCode)}</p>
+        <p className="text-agri-mist">{conditionLabel(current.weatherCode)}</p>
         <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
-            <dt className="text-gray-500">{t("weather.humidity")}</dt>
+            <dt className="text-agri-muted">{t("weather.humidity")}</dt>
             <dd>{metric(current.relativeHumidityPct, "%")}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">{t("weather.wind")}</dt>
+            <dt className="text-agri-muted">{t("weather.wind")}</dt>
             <dd>{metric(current.windSpeedKph, " km/h")}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">{t("weather.precipitation")}</dt>
+            <dt className="text-agri-muted">{t("weather.precipitation")}</dt>
             <dd>{metric(current.precipitationMm, " mm")}</dd>
           </div>
         </dl>
       </section>
 
       {advisories.length > 0 ? (
-        <section className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-          <h2 className="text-sm font-medium text-amber-900">{t("weather.advisories")}</h2>
-          <ul className="mt-2 space-y-1 text-sm text-amber-900">
+        <section className="rounded-lg border border-agri-amber/30 bg-agri-amber/10 p-4">
+          <h2 className="text-sm font-medium text-agri-amber">{t("weather.advisories")}</h2>
+          <ul className="mt-2 space-y-1 text-sm text-agri-amber">
             {advisories.map((flag) => (
               <li key={flag}>• {t(`weather.advisory.${flag}`)}</li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-amber-800 opacity-80">{t("weather.advisoryNote")}</p>
+          <p className="mt-2 text-xs text-agri-amber opacity-80">{t("weather.advisoryNote")}</p>
         </section>
       ) : null}
 
       {forecast.length > 0 ? (
-        <section className="rounded-lg border bg-white p-4">
-          <h2 className="text-sm font-medium text-gray-700">{t("weather.forecastTitle")}</h2>
+        <section className="rounded-lg border bg-agri-bark p-4">
+          <h2 className="text-sm font-medium text-agri-mist">{t("weather.forecastTitle")}</h2>
           <ul className="mt-1">
             {forecast.map((day) => (
               <ForecastRow key={day.date} day={day} />
@@ -101,7 +102,7 @@ function WeatherView({ data, asOf, source }: { data: WeatherSnapshot; asOf: stri
         </section>
       ) : null}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-agri-muted">
         {t("weather.sourceNote", { source })}
         {current.observedAt ? ` · ${t("weather.readingTime", { time: current.observedAt.replace("T", " ") })}` : ""}
         {data.timezone ? ` (${data.timezone})` : ""}
@@ -129,9 +130,9 @@ export default function WeatherPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="weather" titleKey="nav.weather" descKey="agent.weather" art="/agents/weather.webp" />
+      <PageHero id="weather" titleKey="nav.weather" descKey="agent.weather" art="/agents/weather.webp" />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -141,15 +142,15 @@ export default function WeatherPage() {
 
       {!farmsLoading && farms && farms.length > 0 ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="weather-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="weather">
+            <label htmlFor="weather-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="weather-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -157,7 +158,7 @@ export default function WeatherPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
           {activeFarm && !hasCoordinates ? (
             <div className="mt-4">
@@ -170,7 +171,7 @@ export default function WeatherPage() {
           ) : null}
 
           {hasCoordinates && weatherLoading ? (
-            <p className="mt-4 text-gray-500">{t("common.loading")}</p>
+            <p className="mt-4 text-agri-muted">{t("common.loading")}</p>
           ) : null}
 
           {hasCoordinates && isError ? (

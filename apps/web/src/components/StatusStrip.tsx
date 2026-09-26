@@ -93,7 +93,7 @@ export function StatusStrip({ farm, crops, latestSoil, scans }: Props) {
                 aria-hidden="true"
                 className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent.wash}`}
               />
-              <span className="relative block truncate text-[10px] font-semibold uppercase tracking-wide text-agri-forest/55">
+              <span className="relative block truncate text-[10px] font-semibold uppercase tracking-wide text-agri-muted">
                 {tile.label}
               </span>
               {/* The value wraps rather than truncates. A single clipped
@@ -104,7 +104,7 @@ export function StatusStrip({ farm, crops, latestSoil, scans }: Props) {
                   answer on a touch screen, where there is no hover. */}
               <span
                 className={`relative mt-0.5 block break-words text-sm font-semibold ${
-                  tile.value ? "text-agri-forest" : "text-gray-400"
+                  tile.value ? "text-agri-bright" : "text-agri-muted"
                 }`}
                 title={tile.value ?? undefined}
               >

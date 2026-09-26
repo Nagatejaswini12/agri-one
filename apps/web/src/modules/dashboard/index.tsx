@@ -9,7 +9,8 @@ import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { Briefing } from "@/modules/dashboard/Briefing";
 import { AgentCard } from "@/components/AgentCard";
-import { HeroVideo } from "@/components/HeroVideo";
+import { CinematicBackdrop } from "@/components/CinematicBackdrop";
+import { videoFor } from "@/app/pageMedia";
 import { StatusStrip } from "@/components/StatusStrip";
 import { AGENT_TILES, STAGES, TOOL_TILES, tilesForStage } from "@/app/agents";
 import { accentFor, STAGE_ACCENT } from "@/app/theme";
@@ -60,31 +61,30 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-4 sm:px-6">
       {/* ---------------------------------------------------------- hero */}
-      <HeroVideo
-        poster="/video/dashboard-hero-poster.webp"
-        sources={[
-          { src: "/video/dashboard-hero.webm", type: "video/webm" },
-          { src: "/video/dashboard-hero.mp4", type: "video/mp4" }
-        ]}
-        alt={t("dashboard.heroAlt")}
-        className="h-52 sm:h-72 lg:h-80"
+      <section
+        className="relative h-56 overflow-hidden rounded-card border border-white/10 shadow-card sm:h-80 lg:h-[26rem]"
+        aria-label={t("dashboard.heroAlt")}
       >
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-white/25 backdrop-blur-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-agri-leaf" />
-          {t("appName")}
-        </span>
-        <h1 className="mt-2 text-xl font-semibold text-white drop-shadow-sm sm:text-3xl">
-          {greeting}
-        </h1>
-        {activeFarm ? (
-          <p className="mt-1 text-sm text-white/90 drop-shadow-sm sm:text-base">
-            <span className="font-medium">{activeFarm.name}</span>
-            {location ? <span className="text-white/75"> · {location}</span> : null}
-          </p>
-        ) : null}
-      </HeroVideo>
+        <CinematicBackdrop id="orchestrator" video={videoFor("dashboard")} />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+        <div className="relative flex h-full flex-col justify-end p-5 sm:p-8 lg:p-10">
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-agri-bright ring-1 ring-white/20 backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-agri-emerald" />
+            {t("appName")}
+          </span>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-agri-bright sm:text-4xl lg:text-5xl">
+            {greeting}
+          </h1>
+          {activeFarm ? (
+            <p className="mt-1.5 text-sm text-agri-mist sm:text-base">
+              <span className="font-medium text-agri-bright">{activeFarm.name}</span>
+              {location ? <span> · {location}</span> : null}
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -106,7 +106,7 @@ export default function DashboardPage() {
             id="dashboard-farm-select"
             value={activeFarm.id}
             onChange={(e) => setActiveFarmId(e.target.value)}
-            className="rounded-lg border border-agri-forest/15 bg-white/80 px-2 py-1 text-sm"
+            className="agri-field px-2 py-1 text-sm"
           >
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
@@ -118,6 +118,9 @@ export default function DashboardPage() {
       ) : null}
 
       {/* --------------------------------------------- orchestrator card */}
+      {/* The focal point of the command centre: the one agent that reads
+          across every other one. It gets the widest card, the largest
+          artwork and the only multi-colour accent in the system. */}
       {activeFarm ? (
         <section
           className={`agri-card relative mt-5 overflow-hidden ring-1 ${orchestrator.ring}`}
@@ -126,23 +129,35 @@ export default function DashboardPage() {
             aria-hidden="true"
             className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${orchestrator.wash}`}
           />
-          <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
-            <img
-              src="/agents/orchestrator.webp"
-              alt=""
-              aria-hidden="true"
-              width={320}
-              height={320}
-              className="h-24 w-24 shrink-0 self-start object-contain drop-shadow-sm sm:h-32 sm:w-32 sm:self-center lg:h-36 lg:w-36"
-            />
+          {/* A slow emerald field behind the artwork, so the card reads
+              as lit from within rather than as a flat panel. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-16 -top-20 h-64 w-64 rounded-full bg-agri-emerald/15 blur-3xl animate-drift"
+          />
+          <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-7 sm:p-7">
+            <span className="relative shrink-0 self-start sm:self-center">
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 m-auto h-24 w-24 rounded-full bg-agri-emerald/25 blur-2xl sm:h-32 sm:w-32 lg:h-40 lg:w-40"
+              />
+              <img
+                src="/agents/orchestrator.webp"
+                alt=""
+                aria-hidden="true"
+                width={320}
+                height={320}
+                className="agri-art-glow relative h-28 w-28 animate-float object-contain sm:h-36 sm:w-36 lg:h-44 lg:w-44"
+              />
+            </span>
             <div className="min-w-0 flex-1">
               <span className={`agri-eyebrow ${orchestrator.chip} rounded-full px-2 py-0.5`}>
                 {t("dashboard.orchestratorEyebrow")}
               </span>
-              <h2 className="mt-1.5 text-lg font-semibold text-agri-forest sm:text-2xl">
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-agri-bright sm:text-3xl">
                 {t("decision.title")}
               </h2>
-              <p className="mt-1 max-w-prose text-sm text-gray-600">
+              <p className="mt-1 max-w-prose text-sm text-agri-mist">
                 {t("dashboard.orchestratorBlurb")}
               </p>
 
@@ -167,7 +182,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="relative border-t border-agri-forest/8 bg-white/45 px-1 pb-1">
+          <div className="relative border-t border-white/12 bg-agri-bark/5 px-1 pb-1">
             <Briefing farm={activeFarm} hideHeading />
           </div>
         </section>
@@ -203,21 +218,21 @@ export default function DashboardPage() {
               <div key={stage} className="agri-card overflow-hidden">
                 <div className={`flex items-center gap-2 bg-gradient-to-r ${s.header} px-4 py-2.5`}>
                   <span className={`h-2 w-2 rounded-full ${s.dot}`} aria-hidden="true" />
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-agri-forest">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-agri-bright">
                     {t(titleKey)}
                   </h3>
                 </div>
-                <ul className="divide-y divide-agri-forest/8">
+                <ul className="divide-y divide-white/8">
                   {tilesForStage(stage).map((tile) => (
                     <li key={tile.id}>
                       <Link
                         to={tile.to}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition hover:bg-white/70 motion-reduce:transition-none"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-agri-mist transition hover:bg-agri-bark/5 motion-reduce:transition-none"
                       >
-                        <span className="min-w-0 flex-1 truncate font-medium text-agri-forest">
+                        <span className="min-w-0 flex-1 truncate font-medium text-agri-bright">
                           {t(tile.labelKey)}
                         </span>
-                        <span aria-hidden="true" className="text-agri-forest/35">
+                        <span aria-hidden="true" className="text-agri-muted">
                           &rsaquo;
                         </span>
                       </Link>
@@ -236,11 +251,11 @@ export default function DashboardPage() {
           <SectionHeading eyebrow={t("dashboard.soilSummary")} />
           {latestSoil ? (
             <div className={`agri-card mt-3 p-4 text-sm ring-1 ${accentFor("soil").ring}`}>
-              <p className="text-gray-700">
-                {t("soil.ph")}: <span className="font-semibold text-agri-forest">{latestSoil.ph ?? "—"}</span>
+              <p className="text-agri-mist">
+                {t("soil.ph")}: <span className="font-semibold text-agri-bright">{latestSoil.ph ?? "—"}</span>
                 {" · "}
                 {t("soil.soilType")}:{" "}
-                <span className="font-semibold text-agri-forest">{latestSoil.soilType ?? "—"}</span>
+                <span className="font-semibold text-agri-bright">{latestSoil.soilType ?? "—"}</span>
               </p>
               <Link to="/soil-water" className="mt-2 inline-block font-medium text-agri-leaf underline">
                 {t("dashboard.viewSoil")}
@@ -254,7 +269,7 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
-      <p className="agri-card mt-8 p-4 text-sm text-gray-500">{t("dashboard.agentsComingSoon")}</p>
+      <p className="agri-card mt-8 p-4 text-sm text-agri-muted">{t("dashboard.agentsComingSoon")}</p>
     </div>
   );
 }
@@ -262,8 +277,8 @@ export default function DashboardPage() {
 function SectionHeading({ eyebrow, note }: { eyebrow: string; note?: string }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-      <h2 className="text-base font-semibold text-agri-forest sm:text-lg">{eyebrow}</h2>
-      {note ? <p className="text-xs text-gray-500 sm:text-sm">{note}</p> : null}
+      <h2 className="text-base font-semibold text-agri-bright sm:text-lg">{eyebrow}</h2>
+      {note ? <p className="text-xs text-agri-muted sm:text-sm">{note}</p> : null}
     </div>
   );
 }

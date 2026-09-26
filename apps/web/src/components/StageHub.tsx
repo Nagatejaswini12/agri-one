@@ -26,8 +26,8 @@ export function StageHub({
         <div className="flex items-center gap-2.5 px-5 py-4">
           <span className={`h-2.5 w-2.5 rounded-full ${accent.dot}`} aria-hidden="true" />
           <div>
-            <h1 className="text-lg font-semibold text-agri-forest sm:text-xl">{t(titleKey)}</h1>
-            <p className="mt-0.5 text-sm text-gray-600">{t(descriptionKey)}</p>
+            <h1 className="text-lg font-semibold text-agri-bright sm:text-xl">{t(titleKey)}</h1>
+            <p className="mt-0.5 text-sm text-agri-mist">{t(descriptionKey)}</p>
           </div>
         </div>
       </div>

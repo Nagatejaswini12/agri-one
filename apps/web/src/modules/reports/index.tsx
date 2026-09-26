@@ -13,7 +13,8 @@ import { FinancialForm } from "@/modules/reports/FinancialForm";
 import { YieldForm } from "@/modules/reports/YieldForm";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 /** Indian grouping, and always a real number — never a placeholder. */
 function money(value: number): string {
@@ -51,25 +52,25 @@ function FinancialRow({
   const { t } = useTranslation();
   const isRevenue = record.type === "revenue";
   return (
-    <li className="rounded border bg-white p-3">
+    <li className="rounded border bg-agri-bark p-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 truncate text-sm font-medium">
           {t(`reports.category.${record.category}`, { defaultValue: record.category })}
         </span>
-        <span className={`shrink-0 text-sm font-semibold ${isRevenue ? "text-green-700" : "text-gray-900"}`}>
+        <span className={`shrink-0 text-sm font-semibold ${isRevenue ? "text-agri-emerald" : "text-agri-bright"}`}>
           {isRevenue ? "+" : "−"}
           {money(record.amount)}
         </span>
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">
+      <p className="mt-0.5 text-xs text-agri-muted">
         {cropName(crops, record.cropId, t("reports.wholeFarm"))} · {formatDate(record.recordedOn)}
       </p>
-      {record.notes ? <p className="mt-1 text-xs text-gray-600">{record.notes}</p> : null}
+      {record.notes ? <p className="mt-1 text-xs text-agri-mist">{record.notes}</p> : null}
       <button
         type="button"
         onClick={onDelete}
         disabled={deleting}
-        className="mt-2 text-xs font-medium text-red-700 underline disabled:opacity-50"
+        className="mt-2 text-xs font-medium text-agri-coral underline disabled:opacity-50"
       >
         {t("common.delete")}
       </button>
@@ -90,7 +91,7 @@ function YieldRow({
 }) {
   const { t } = useTranslation();
   return (
-    <li className="rounded border bg-white p-3">
+    <li className="rounded border bg-agri-bark p-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 truncate text-sm font-medium">
           {cropName(crops, record.cropId, t("reports.unknownCrop"))}
@@ -100,12 +101,12 @@ function YieldRow({
           {t(`reports.unitName.${record.unit}`, { defaultValue: record.unit })}
         </span>
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">{formatDate(record.harvestedOn)}</p>
+      <p className="mt-0.5 text-xs text-agri-muted">{formatDate(record.harvestedOn)}</p>
       <button
         type="button"
         onClick={onDelete}
         disabled={deleting}
-        className="mt-2 text-xs font-medium text-red-700 underline disabled:opacity-50"
+        className="mt-2 text-xs font-medium text-agri-coral underline disabled:opacity-50"
       >
         {t("common.delete")}
       </button>
@@ -138,10 +139,10 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="reports" titleKey="nav.reports" descKey="agent.reports" />
-      <p className="mt-1 text-sm text-gray-600">{t("reports.intro")}</p>
+      <PageHero id="reports" titleKey="nav.reports" descKey="agent.reports" />
+      <p className="mt-1 text-sm text-agri-mist">{t("reports.intro")}</p>
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -151,15 +152,15 @@ export default function ReportsPage() {
 
       {!farmsLoading && farms && farms.length > 0 && activeFarm ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="reports-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="reports">
+            <label htmlFor="reports-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="reports-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -167,16 +168,16 @@ export default function ReportsPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
           {/* --- money summary ------------------------------------- */}
           <section className="mt-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-agri-muted">
               {t("reports.moneyTitle")}
             </h2>
 
-            {financial.isLoading ? <p className="mt-2 text-gray-500">{t("common.loading")}</p> : null}
-            {financial.isError ? <p className="mt-2 text-sm text-red-600">{t("reports.loadError")}</p> : null}
+            {financial.isLoading ? <p className="mt-2 text-agri-muted">{t("common.loading")}</p> : null}
+            {financial.isError ? <p className="mt-2 text-sm text-agri-coral">{t("reports.loadError")}</p> : null}
 
             {/* No entries means no numbers — never a fabricated ₹0. */}
             {!financial.isLoading && !financial.isError && !summary.hasEntries ? (
@@ -186,39 +187,39 @@ export default function ReportsPage() {
             ) : null}
 
             {summary.hasEntries ? (
-              <div className="mt-2 rounded-lg border bg-white p-4">
+              <div className="mt-2 rounded-lg border bg-agri-bark p-4">
                 <dl className="grid grid-cols-3 gap-2 text-sm">
                   <div>
-                    <dt className="text-gray-500">{t("reports.totalRevenue")}</dt>
-                    <dd className="font-semibold text-green-700">{money(summary.revenue)}</dd>
+                    <dt className="text-agri-muted">{t("reports.totalRevenue")}</dt>
+                    <dd className="font-semibold text-agri-emerald">{money(summary.revenue)}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">{t("reports.totalCost")}</dt>
+                    <dt className="text-agri-muted">{t("reports.totalCost")}</dt>
                     <dd className="font-semibold">{money(summary.cost)}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500">{t("reports.margin")}</dt>
-                    <dd className={`font-semibold ${summary.margin < 0 ? "text-red-700" : "text-green-700"}`}>
+                    <dt className="text-agri-muted">{t("reports.margin")}</dt>
+                    <dd className={`font-semibold ${summary.margin < 0 ? "text-agri-coral" : "text-agri-emerald"}`}>
                       {money(summary.margin)}
                     </dd>
                   </div>
                 </dl>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-agri-muted">
                   {t("reports.entriesCounted", { count: summary.entryCount })}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">{t("reports.marginNote")}</p>
+                <p className="mt-1 text-xs text-agri-muted">{t("reports.marginNote")}</p>
               </div>
             ) : null}
           </section>
 
           {/* --- harvest summary ----------------------------------- */}
           <section className="mt-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-agri-muted">
               {t("reports.yieldTitle")}
             </h2>
 
-            {yields.isLoading ? <p className="mt-2 text-gray-500">{t("common.loading")}</p> : null}
-            {yields.isError ? <p className="mt-2 text-sm text-red-600">{t("reports.loadError")}</p> : null}
+            {yields.isLoading ? <p className="mt-2 text-agri-muted">{t("common.loading")}</p> : null}
+            {yields.isError ? <p className="mt-2 text-sm text-agri-coral">{t("reports.loadError")}</p> : null}
 
             {!yields.isLoading && !yields.isError && !yieldSummary.hasEntries ? (
               <div className="mt-2">
@@ -227,20 +228,20 @@ export default function ReportsPage() {
             ) : null}
 
             {yieldSummary.hasEntries ? (
-              <div className="mt-2 rounded-lg border bg-white p-4">
+              <div className="mt-2 rounded-lg border bg-agri-bark p-4">
                 {/* One line per unit: quantities in different units are
                     never added together. */}
                 <ul className="space-y-1 text-sm">
                   {yieldSummary.totals.map((total) => (
                     <li key={total.unit} className="flex justify-between">
-                      <span className="text-gray-500">
+                      <span className="text-agri-muted">
                         {t(`reports.unitName.${total.unit}`, { defaultValue: total.unit })}
                       </span>
                       <span className="font-semibold">{quantity(total.quantity)}</span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2 text-xs text-gray-500">{t("reports.unitNote")}</p>
+                <p className="mt-2 text-xs text-agri-muted">{t("reports.unitNote")}</p>
               </div>
             ) : null}
           </section>
@@ -250,7 +251,7 @@ export default function ReportsPage() {
             <button
               type="button"
               onClick={() => setShowFinancialForm((v) => !v)}
-              className="rounded border px-3 py-2 text-sm font-medium text-green-700"
+              className="rounded border px-3 py-2 text-sm font-medium text-agri-emerald"
             >
               {showFinancialForm ? t("common.cancel") : t("reports.addEntry")}
             </button>
@@ -263,7 +264,7 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={() => setShowYieldForm((v) => !v)}
-                  className="rounded border px-3 py-2 text-sm font-medium text-green-700"
+                  className="rounded border px-3 py-2 text-sm font-medium text-agri-emerald"
                 >
                   {showYieldForm ? t("common.cancel") : t("reports.addHarvest")}
                 </button>
@@ -281,7 +282,7 @@ export default function ReportsPage() {
           {/* --- entry lists --------------------------------------- */}
           {financial.data && financial.data.length > 0 ? (
             <section className="mt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-agri-muted">
                 {t("reports.moneyEntries")}
               </h2>
               <ul className="mt-2 space-y-2">
@@ -300,7 +301,7 @@ export default function ReportsPage() {
 
           {yields.data && yields.data.length > 0 ? (
             <section className="mt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-agri-muted">
                 {t("reports.yieldEntries")}
               </h2>
               <ul className="mt-2 space-y-2">

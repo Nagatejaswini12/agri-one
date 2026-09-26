@@ -8,7 +8,8 @@ import { channelsForState } from "@/modules/marketplace/officialChannels";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 /** A price the source didn't report renders as a dash, never as ₹0. */
 function money(value: number | null): string {
@@ -26,12 +27,12 @@ function formatDate(iso: string): string {
 function VenueRow({ venue }: { venue: SellingVenue }) {
   const { t } = useTranslation();
   return (
-    <li className="rounded-lg border bg-white p-3">
+    <li className="rounded-lg border bg-agri-bark p-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 truncate font-medium">{venue.market}</span>
         <span className="shrink-0 font-semibold">{money(venue.modalPrice)}</span>
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">
+      <p className="mt-0.5 text-xs text-agri-muted">
         {t(`marketplace.kind.${venue.kind}`)}
         {venue.minPrice !== null || venue.maxPrice !== null ? (
           <>
@@ -53,11 +54,11 @@ function GroupSection({ group }: { group: VenueGroup }) {
       : t("marketplace.varietyHeading", { variety: group.variety });
   return (
     <section>
-      <h2 className="text-sm font-medium text-gray-700">
+      <h2 className="text-sm font-medium text-agri-mist">
         {label} ({group.venues.length})
       </h2>
       {group.grade ? (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-agri-muted">
           {t("market.grade")}: {group.grade}
         </p>
       ) : null}
@@ -79,8 +80,8 @@ function OfficialChannels({ state }: { state: string }) {
   if (channels.length === 0) return null;
 
   return (
-    <section className="rounded-lg border bg-gray-50 p-4">
-      <h2 className="text-sm font-medium text-gray-700">{t("marketplace.officialChannels")}</h2>
+    <section className="rounded-lg border bg-white/5 p-4">
+      <h2 className="text-sm font-medium text-agri-mist">{t("marketplace.officialChannels")}</h2>
       <ul className="mt-2 space-y-2">
         {channels.map((c) => (
           <li key={c.catalogId}>
@@ -88,11 +89,11 @@ function OfficialChannels({ state }: { state: string }) {
               href={c.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-green-700 underline"
+              className="text-sm font-medium text-agri-emerald underline"
             >
               {c.name}
             </a>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-agri-muted">
               {c.sourceName} · {t("marketplace.channelVerified", { date: formatDate(c.lastVerifiedOn) })}
             </p>
           </li>
@@ -108,7 +109,7 @@ function VenuesView({ data, asOf, source }: { data: MarketSnapshot; asOf: string
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <p className="rounded-lg border border-agri-amber/30 bg-agri-amber/10 p-3 text-sm text-agri-amber">
         {t("marketplace.disclaimer")}
       </p>
 
@@ -121,7 +122,7 @@ function VenuesView({ data, asOf, source }: { data: MarketSnapshot; asOf: string
         />
       ) : (
         <>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-agri-mist">
             {places.latestReportedOn === null
               ? t("marketplace.scopeNoDate", { crop: data.commodity, district: data.district })
               : t("marketplace.scope", {
@@ -135,17 +136,17 @@ function VenuesView({ data, asOf, source }: { data: MarketSnapshot; asOf: string
             <GroupSection key={`${g.variety ?? ""}-${g.grade ?? ""}`} group={g} />
           ))}
 
-          <p className="text-xs text-gray-500">{t("marketplace.varietyNote")}</p>
+          <p className="text-xs text-agri-muted">{t("marketplace.varietyNote")}</p>
         </>
       )}
 
       <OfficialChannels state={data.state} />
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-agri-muted">
         {t("market.sourceNote", { source })}
         {` · ${t("market.fetchedAt", { time: new Date(asOf).toLocaleTimeString() })}`}
       </p>
-      <p className="text-xs text-gray-500">{t("marketplace.notADirectory")}</p>
+      <p className="text-xs text-agri-muted">{t("marketplace.notADirectory")}</p>
     </div>
   );
 }
@@ -181,10 +182,10 @@ export default function MarketplacePage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="marketplace" titleKey="marketplace.title" descKey="agent.marketplace" />
-      <p className="mt-1 text-sm text-gray-600">{t("marketplace.intro")}</p>
+      <PageHero id="marketplace" titleKey="marketplace.title" descKey="agent.marketplace" />
+      <p className="mt-1 text-sm text-agri-mist">{t("marketplace.intro")}</p>
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -194,15 +195,15 @@ export default function MarketplacePage() {
 
       {!farmsLoading && farms && farms.length > 0 ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="marketplace-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="marketplace">
+            <label htmlFor="marketplace-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="marketplace-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -210,7 +211,7 @@ export default function MarketplacePage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
           {/* Never substitute another district — say the farm has none. */}
           {activeFarm && !hasLocation ? (
@@ -234,15 +235,15 @@ export default function MarketplacePage() {
           ) : null}
 
           {hasLocation && crops && crops.length > 0 ? (
-            <div className="mt-4">
-              <label htmlFor="marketplace-crop-select" className="block text-sm font-medium text-gray-700">
+            <SelectorPanel id="marketplace">
+              <label htmlFor="marketplace-crop-select" className="block text-xs font-semibold text-agri-muted">
                 {t("market.selectCrop")}
               </label>
               <select
                 id="marketplace-crop-select"
                 value={selectedCropId ?? ""}
                 onChange={(e) => setSelectedCropId(e.target.value || null)}
-                className="mt-1 rounded border px-3 py-2"
+                className="agri-field mt-1"
               >
                 {crops.map((crop) => (
                   <option key={crop.id} value={crop.id}>
@@ -250,10 +251,10 @@ export default function MarketplacePage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </SelectorPanel>
           ) : null}
 
-          {canQuery && isLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+          {canQuery && isLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
           {canQuery && isError ? (
             <div className="mt-4">

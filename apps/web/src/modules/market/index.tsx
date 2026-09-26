@@ -6,7 +6,8 @@ import { useMarket } from "@/modules/market/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 /**
  * A price the source didn't report renders as a dash, never as ₹0 — a
@@ -32,28 +33,28 @@ function formatDate(iso: string): string {
 function QuoteCard({ quote }: { quote: MarketPriceQuote }) {
   const { t } = useTranslation();
   return (
-    <li className="rounded-lg border bg-white p-4">
+    <li className="rounded-lg border bg-agri-bark p-4">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="min-w-0 truncate font-medium">{quote.market}</h3>
         <p className="shrink-0 text-lg font-semibold">{price(quote.modalPrice)}</p>
       </div>
-      <p className="text-right text-xs text-gray-500">{t("market.modal")}</p>
+      <p className="text-right text-xs text-agri-muted">{t("market.modal")}</p>
 
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
         <div>
-          <dt className="text-gray-500">{t("market.min")}</dt>
+          <dt className="text-agri-muted">{t("market.min")}</dt>
           <dd>{price(quote.minPrice)}</dd>
         </div>
         <div>
-          <dt className="text-gray-500">{t("market.max")}</dt>
+          <dt className="text-agri-muted">{t("market.max")}</dt>
           <dd>{price(quote.maxPrice)}</dd>
         </div>
         <div>
-          <dt className="text-gray-500">{t("market.variety")}</dt>
+          <dt className="text-agri-muted">{t("market.variety")}</dt>
           <dd className="truncate">{text(quote.variety)}</dd>
         </div>
         <div>
-          <dt className="text-gray-500">{t("market.grade")}</dt>
+          <dt className="text-agri-muted">{t("market.grade")}</dt>
           <dd className="truncate">{text(quote.grade)}</dd>
         </div>
       </dl>
@@ -61,7 +62,7 @@ function QuoteCard({ quote }: { quote: MarketPriceQuote }) {
       {/* The snapshot's headline date covers the dated rows; only a row
           whose own date was unreadable needs saying so here. */}
       {quote.reportedOn === null ? (
-        <p className="mt-2 text-xs text-gray-500">{t("market.reportedOnUnknown")}</p>
+        <p className="mt-2 text-xs text-agri-muted">{t("market.reportedOnUnknown")}</p>
       ) : null}
     </li>
   );
@@ -80,24 +81,24 @@ function MarketView({
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="rounded-lg border bg-white p-4">
+      <section className="rounded-lg border bg-agri-bark p-4">
         <h2 className="text-lg font-semibold">{data.commodity}</h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-agri-mist">
           {t("market.location", { district: data.district, state: data.state })}
         </p>
 
         {/* The reported-on date is the farmer's answer to "how current is
             this?", so it leads rather than sitting in the footnote. */}
-        <p className="mt-3 rounded bg-gray-50 px-3 py-2 text-sm font-medium">
+        <p className="mt-3 rounded bg-white/5 px-3 py-2 text-sm font-medium">
           {data.latestReportedOn === null
             ? t("market.reportedOnUnknown")
             : t("market.reportedOn", { date: formatDate(data.latestReportedOn) })}
         </p>
-        <p className="mt-2 text-xs text-gray-500">{t("market.priceUnit")}</p>
+        <p className="mt-2 text-xs text-agri-muted">{t("market.priceUnit")}</p>
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-gray-700">
+        <h2 className="text-sm font-medium text-agri-mist">
           {t("market.mandis", { n: data.quotes.length })}
         </h2>
         <ul className="mt-2 space-y-3">
@@ -107,11 +108,11 @@ function MarketView({
         </ul>
       </section>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-agri-muted">
         {t("market.sourceNote", { source })}
         {` · ${t("market.fetchedAt", { time: new Date(asOf).toLocaleTimeString() })}`}
       </p>
-      <p className="text-xs text-gray-500">{t("market.snapshotNote")}</p>
+      <p className="text-xs text-agri-muted">{t("market.snapshotNote")}</p>
     </div>
   );
 }
@@ -150,9 +151,9 @@ export default function MarketPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="market" titleKey="nav.market" descKey="agent.market" art="/agents/market.webp" />
+      <PageHero id="market" titleKey="nav.market" descKey="agent.market" art="/agents/market.webp" />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -162,15 +163,15 @@ export default function MarketPage() {
 
       {!farmsLoading && farms && farms.length > 0 ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="market-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="market">
+            <label htmlFor="market-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="market-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -178,7 +179,7 @@ export default function MarketPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
           {activeFarm && !hasLocation ? (
             <div className="mt-4">
@@ -191,7 +192,7 @@ export default function MarketPage() {
           ) : null}
 
           {activeFarm && hasLocation && cropsLoading ? (
-            <p className="mt-4 text-gray-500">{t("common.loading")}</p>
+            <p className="mt-4 text-agri-muted">{t("common.loading")}</p>
           ) : null}
 
           {activeFarm && hasLocation && !cropsLoading && (!crops || crops.length === 0) ? (
@@ -205,15 +206,15 @@ export default function MarketPage() {
           ) : null}
 
           {hasLocation && crops && crops.length > 0 ? (
-            <div className="mt-4">
-              <label htmlFor="market-crop-select" className="block text-sm font-medium text-gray-700">
+            <SelectorPanel id="market">
+              <label htmlFor="market-crop-select" className="block text-xs font-semibold text-agri-muted">
                 {t("market.selectCrop")}
               </label>
               <select
                 id="market-crop-select"
                 value={selectedCropId ?? ""}
                 onChange={(e) => setSelectedCropId(e.target.value || null)}
-                className="mt-1 rounded border px-3 py-2"
+                className="agri-field mt-1"
               >
                 {crops.map((crop) => (
                   <option key={crop.id} value={crop.id}>
@@ -221,11 +222,11 @@ export default function MarketPage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </SelectorPanel>
           ) : null}
 
           {canQuery && marketLoading ? (
-            <p className="mt-4 text-gray-500">{t("common.loading")}</p>
+            <p className="mt-4 text-agri-muted">{t("common.loading")}</p>
           ) : null}
 
           {canQuery && isError ? (

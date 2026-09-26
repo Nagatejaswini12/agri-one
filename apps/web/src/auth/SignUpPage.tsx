@@ -42,8 +42,8 @@ export default function SignUpPage() {
     return (
       <AuthLayout>
         <h1 className="text-lg font-semibold">{t("auth.checkEmailTitle")}</h1>
-        <p className="mt-2 text-gray-600">{t("auth.checkEmailBody")}</p>
-        <Link to="/sign-in" className="mt-4 inline-block font-medium text-green-700 underline">
+        <p className="mt-2 text-agri-mist">{t("auth.checkEmailBody")}</p>
+        <Link to="/sign-in" className="mt-4 inline-block font-medium text-agri-emerald underline">
           {t("auth.signIn")}
         </Link>
       </AuthLayout>
@@ -55,7 +55,7 @@ export default function SignUpPage() {
       <h1 className="text-lg font-semibold">{t("auth.signUp")}</h1>
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-4">
         <div>
-          <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="signup-email" className="block text-sm font-medium text-agri-mist">
             {t("auth.email")}
           </label>
           <input
@@ -65,11 +65,11 @@ export default function SignUpPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
         <div>
-          <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="signup-password" className="block text-sm font-medium text-agri-mist">
             {t("auth.password")}
           </label>
           <input
@@ -80,23 +80,23 @@ export default function SignUpPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
 
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+          className="w-full agri-button"
         >
           {pending ? t("auth.signingUp") : t("auth.signUp")}
         </button>
       </form>
-      <p className="mt-4 text-center text-sm text-gray-600">
+      <p className="mt-4 text-center text-sm text-agri-mist">
         {t("auth.haveAccount")}{" "}
-        <Link to="/sign-in" className="font-medium text-green-700 underline">
+        <Link to="/sign-in" className="font-medium text-agri-emerald underline">
           {t("auth.signIn")}
         </Link>
       </p>

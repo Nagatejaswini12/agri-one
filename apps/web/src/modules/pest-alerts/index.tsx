@@ -12,7 +12,8 @@ import {
   selectPestActivity,
   type PestActivityRecord
 } from "./selectPestActivity";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 /**
  * "Pest Activity on Your Farm".
@@ -30,20 +31,20 @@ import { PageHeader } from "@/components/PageHeader";
  */
 
 const CONFIDENCE_BADGE: Record<DiagnosisConfidenceLevel, string> = {
-  high: "bg-green-100 text-green-800",
-  medium: "bg-amber-100 text-amber-800",
-  low: "bg-gray-200 text-gray-700"
+  high: "bg-agri-emerald/15 text-agri-emerald",
+  medium: "bg-agri-amber/15 text-agri-amber",
+  low: "bg-white/10 text-agri-mist"
 };
 
 function PestRow({ record }: { record: PestActivityRecord }) {
   const { t } = useTranslation();
 
   return (
-    <li className="rounded-lg border bg-white p-4">
+    <li className="rounded-lg border bg-agri-bark p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{record.label}</p>
-          <p className="mt-0.5 text-sm text-gray-500">
+          <p className="mt-0.5 text-sm text-agri-muted">
             {record.cropName ?? t("scanHistory.unknownCrop")} ·{" "}
             {t("pestActivity.scannedOn", {
               date: new Date(record.scannedAt).toLocaleDateString()
@@ -61,13 +62,13 @@ function PestRow({ record }: { record: PestActivityRecord }) {
 
       {/* The existing Crop Diagnosis wording, unchanged: a model score,
           stated as a model score. */}
-      <p className="mt-1 text-xs text-gray-400">
+      <p className="mt-1 text-xs text-agri-muted">
         {t("scanCrop.modelEstimate", { percent: Math.round(record.confidence * 100) })}
       </p>
-      <p className="mt-0.5 text-xs text-gray-400">{t("scanCrop.notCalibratedNote")}</p>
+      <p className="mt-0.5 text-xs text-agri-muted">{t("scanCrop.notCalibratedNote")}</p>
 
       {record.recommendExpertConsult ? (
-        <p className="mt-2 text-xs text-amber-800">
+        <p className="mt-2 text-xs text-agri-amber">
           {t("scanCrop.consultExpert")}
           {record.expertConsultReason ? ` — ${record.expertConsultReason}` : null}
         </p>
@@ -83,25 +84,25 @@ function OfficialResources({ state }: { state: string | null }) {
   return (
     <section className="mt-8">
       <h2 className="text-lg font-semibold">{t("pestActivity.resources.title")}</h2>
-      <p className="mt-1 text-sm text-gray-600">{t("pestActivity.resources.intro")}</p>
+      <p className="mt-1 text-sm text-agri-mist">{t("pestActivity.resources.intro")}</p>
 
       {resources.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-500">{t("pestActivity.resources.none")}</p>
+        <p className="mt-3 text-sm text-agri-muted">{t("pestActivity.resources.none")}</p>
       ) : (
         <ul className="mt-3 space-y-3">
           {resources.map((r) => (
-            <li key={r.id} className="rounded-lg border bg-white p-4">
+            <li key={r.id} className="rounded-lg border bg-agri-bark p-4">
               <a
                 href={r.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-green-700 underline"
+                className="font-medium text-agri-emerald underline"
               >
                 {r.name}
               </a>
-              <p className="mt-1 text-sm text-gray-600">{r.purpose}</p>
-              <p className="mt-1 text-xs text-gray-400">{r.sourceName}</p>
-              <p className="mt-0.5 text-xs text-gray-400">
+              <p className="mt-1 text-sm text-agri-mist">{r.purpose}</p>
+              <p className="mt-1 text-xs text-agri-muted">{r.sourceName}</p>
+              <p className="mt-0.5 text-xs text-agri-muted">
                 {t("pestActivity.resources.checkedOn", {
                   date: new Date(r.lastVerifiedOn).toLocaleDateString()
                 })}
@@ -137,10 +138,10 @@ export default function PestAlertsPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="pest" titleKey="pestActivity.title" descKey="agent.pest" />
-      <p className="mt-2 text-sm text-gray-600">{t("pestActivity.intro")}</p>
+      <PageHero id="pest" titleKey="pestActivity.title" descKey="agent.pest" />
+      <p className="mt-2 text-sm text-agri-mist">{t("pestActivity.intro")}</p>
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -154,10 +155,10 @@ export default function PestAlertsPage() {
 
       {hasFarms ? (
         <>
-          <div className="mt-4">
+          <SelectorPanel id="pest">
             <label
               htmlFor="pest-farm-select"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-xs font-semibold text-agri-muted"
             >
               {t("soil.selectFarm")}
             </label>
@@ -165,7 +166,7 @@ export default function PestAlertsPage() {
               id="pest-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((f) => (
                 <option key={f.id} value={f.id}>
@@ -173,16 +174,16 @@ export default function PestAlertsPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
-          {scansLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+          {scansLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
           {isError ? (
-            <p className="mt-4 text-red-600">{t("pestActivity.loadError")}</p>
+            <p className="mt-4 text-agri-coral">{t("pestActivity.loadError")}</p>
           ) : null}
 
           {ready ? (
             <>
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-agri-muted">
                 {t("pestActivity.windowNote", { days: DEFAULT_WINDOW_DAYS })}
               </p>
 
@@ -215,7 +216,7 @@ export default function PestAlertsPage() {
                   </ul>
                   <Link
                     to="/scan-history"
-                    className="mt-3 inline-block text-sm font-medium text-green-700 underline"
+                    className="mt-3 inline-block text-sm font-medium text-agri-emerald underline"
                   >
                     {t("pestActivity.seeAllScans")}
                   </Link>
@@ -226,8 +227,8 @@ export default function PestAlertsPage() {
 
           <OfficialResources state={farm?.state ?? null} />
 
-          <p className="mt-6 text-xs text-gray-500">{t("pestActivity.notPredicted")}</p>
-          <p className="mt-1 text-xs text-gray-500">{t("pestActivity.noTreatmentAdvice")}</p>
+          <p className="mt-6 text-xs text-agri-muted">{t("pestActivity.notPredicted")}</p>
+          <p className="mt-1 text-xs text-agri-muted">{t("pestActivity.noTreatmentAdvice")}</p>
         </>
       ) : null}
     </div>

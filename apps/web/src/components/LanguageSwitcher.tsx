@@ -42,7 +42,7 @@ export function LanguageSwitcher() {
         id="language-select"
         value={language}
         onChange={(e) => void handleChange(e.target.value as (typeof SUPPORTED_LANGUAGES)[number]["code"])}
-        className="shrink-0 rounded border px-2 py-1 text-sm"
+        className="agri-field shrink-0 px-2 py-1 text-sm"
       >
         {SUPPORTED_LANGUAGES.map(({ code, label }) => (
           <option key={code} value={code}>

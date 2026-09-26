@@ -49,15 +49,15 @@ const SIGNAL_MARK: Record<SignalStatus["status"], string> = {
 };
 
 const SIGNAL_TONE: Record<SignalStatus["status"], string> = {
-  ok: "text-green-700",
-  skipped: "text-gray-500",
-  unavailable: "text-amber-700"
+  ok: "text-agri-emerald",
+  skipped: "text-agri-muted",
+  unavailable: "text-agri-amber"
 };
 
 function ActionRow({ action }: { action: DecisionAction }) {
   const { t } = useTranslation();
   return (
-    <li className={`rounded bg-white p-3 ${PRIORITY_STYLE[action.priority]}`}>
+    <li className={`rounded bg-agri-bark p-3 ${PRIORITY_STYLE[action.priority]}`}>
       <p className="text-sm">
         {t(`decision.action.${action.key}`, {
           ...(action.params ?? {}),
@@ -66,7 +66,7 @@ function ActionRow({ action }: { action: DecisionAction }) {
       </p>
       <Link
         to={SOURCE_ROUTE[action.sourceAgent]}
-        className="mt-1 inline-block text-xs font-medium text-green-700 underline"
+        className="mt-1 inline-block text-xs font-medium text-agri-emerald underline"
       >
         {t(`decision.signal.${action.sourceAgent}`)} ›
       </Link>
@@ -82,7 +82,7 @@ function SignalRow({ agent, signal }: { agent: DecisionSourceAgent; signal: Sign
         {SIGNAL_MARK[signal.status]}
       </span>
       <span className="font-medium">{t(`decision.signal.${agent}`)}</span>
-      <span className="text-gray-500">
+      <span className="text-agri-muted">
         <span className="sr-only">{t(`decision.status.${signal.status}`)}: </span>
         {signal.reasonKey
           ? t(`decision.signalReason.${signal.reasonKey}`, {
@@ -99,12 +99,12 @@ function BriefingView({ data, asOf }: { data: FarmBriefing; asOf: string }) {
 
   return (
     <div className="mt-2 space-y-4">
-      <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <p className="rounded-lg border border-agri-amber/30 bg-agri-amber/10 p-3 text-sm text-agri-amber">
         {t("decision.disclaimer")}
       </p>
 
       {data.actions.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">
+        <p className="rounded-lg border border-dashed p-4 text-center text-sm text-agri-muted">
           {t("decision.nothingToFlag")}
         </p>
       ) : (
@@ -113,7 +113,7 @@ function BriefingView({ data, asOf }: { data: FarmBriefing; asOf: string }) {
           if (inGroup.length === 0) return null;
           return (
             <section key={priority}>
-              <h3 className="text-sm font-medium text-gray-700">
+              <h3 className="text-sm font-medium text-agri-mist">
                 {t(`decision.group.${priority}`)} ({inGroup.length})
               </h3>
               <ul className="mt-2 space-y-2">
@@ -128,8 +128,8 @@ function BriefingView({ data, asOf }: { data: FarmBriefing; asOf: string }) {
 
       {/* Every agent is listed, including the ones that failed or were
           skipped — a shorter briefing must never look like a complete one. */}
-      <section className="rounded-lg border bg-gray-50 p-3">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+      <section className="rounded-lg border bg-white/5 p-3">
+        <h3 className="text-xs font-medium uppercase tracking-wide text-agri-muted">
           {t("decision.signalsUsed")}
         </h3>
         <ul className="mt-2 space-y-1">
@@ -139,7 +139,7 @@ function BriefingView({ data, asOf }: { data: FarmBriefing; asOf: string }) {
         </ul>
       </section>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-agri-muted">
         {t("decision.generatedAt", { time: new Date(asOf).toLocaleTimeString() })}
       </p>
     </div>
@@ -184,7 +184,7 @@ export function Briefing({ farm, hideHeading = false }: { farm: Farm; hideHeadin
   return (
     <section className={hideHeading ? "" : "mt-6"}>
       {hideHeading ? null : (
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-agri-muted">
           {t("decision.title")}
         </h2>
       )}
@@ -194,11 +194,11 @@ export function Briefing({ farm, hideHeading = false }: { farm: Farm; hideHeadin
           the briefing priced everything they grow. */}
       {activeCrops.length > 0 ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label htmlFor="briefing-crop-select" className="text-sm text-gray-700">
+          <label htmlFor="briefing-crop-select" className="text-sm text-agri-mist">
             {t("decision.marketCropLabel")}
           </label>
           {activeCrops.length === 1 ? (
-            <span className="rounded bg-gray-100 px-2 py-1 text-sm font-medium">
+            <span className="rounded bg-white/8 px-2 py-1 text-sm font-medium">
               {activeCrops[0].cropName}
             </span>
           ) : (
@@ -206,7 +206,7 @@ export function Briefing({ farm, hideHeading = false }: { farm: Farm; hideHeadin
               id="briefing-crop-select"
               value={selectedCrop ?? ""}
               onChange={(e) => setSelectedCrop(e.target.value || null)}
-              className="rounded border px-2 py-1 text-sm"
+              className="agri-field px-2 py-1 text-sm"
             >
               {activeCrops.map((c) => (
                 <option key={c.id} value={c.cropName}>
@@ -215,11 +215,11 @@ export function Briefing({ farm, hideHeading = false }: { farm: Farm; hideHeadin
               ))}
             </select>
           )}
-          <span className="text-xs text-gray-500">{t("decision.marketCropNote")}</span>
+          <span className="text-xs text-agri-muted">{t("decision.marketCropNote")}</span>
         </div>
       ) : null}
 
-      {isLoading ? <p className="mt-2 text-gray-500">{t("decision.loading")}</p> : null}
+      {isLoading ? <p className="mt-2 text-agri-muted">{t("decision.loading")}</p> : null}
 
       {isError ? (
         <div className="mt-2">

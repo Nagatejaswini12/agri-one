@@ -4,7 +4,8 @@ import { useFarms } from "@/modules/farms/hooks";
 import { useSoilRecords, useCreateSoilRecord, type SoilRecordInput } from "@/modules/soil-water/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 const SOIL_TYPES = ["sandy", "loamy", "clay", "silty", "black", "red", "alluvial"] as const;
 
@@ -52,9 +53,9 @@ export default function SoilWaterPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="soil" titleKey="nav.soilWater" descKey="agent.soil" art="/agents/soil.webp" />
+      <PageHero id="soil" titleKey="nav.soilWater" descKey="agent.soil" art="/agents/soil.webp" />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -64,15 +65,15 @@ export default function SoilWaterPage() {
 
       {!farmsLoading && farms && farms.length > 0 ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="soil-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="soil">
+            <label htmlFor="soil-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="soil-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -80,10 +81,10 @@ export default function SoilWaterPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
-          {recordsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
-          {isError ? <p className="mt-4 text-red-600">{t("soil.loadError")}</p> : null}
+          {recordsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
+          {isError ? <p className="mt-4 text-agri-coral">{t("soil.loadError")}</p> : null}
 
           {!recordsLoading && !isError && !latest ? (
             <div className="mt-4">
@@ -92,22 +93,22 @@ export default function SoilWaterPage() {
           ) : null}
 
           {!recordsLoading && latest ? (
-            <div className="mt-4 rounded-lg border bg-white p-4">
-              <p className="text-sm text-gray-500">
+            <div className="mt-4 rounded-lg border bg-agri-bark p-4">
+              <p className="text-sm text-agri-muted">
                 {t("soil.testedOn")}: {latest.testedOn ?? t("soil.dateUnknown")}
               </p>
               <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                <dt className="text-gray-500">{t("soil.soilType")}</dt>
+                <dt className="text-agri-muted">{t("soil.soilType")}</dt>
                 <dd>{latest.soilType ?? "—"}</dd>
-                <dt className="text-gray-500">{t("soil.ph")}</dt>
+                <dt className="text-agri-muted">{t("soil.ph")}</dt>
                 <dd>{latest.ph ?? "—"}</dd>
-                <dt className="text-gray-500">{t("soil.nitrogen")}</dt>
+                <dt className="text-agri-muted">{t("soil.nitrogen")}</dt>
                 <dd>{latest.nitrogen ?? "—"}</dd>
-                <dt className="text-gray-500">{t("soil.phosphorus")}</dt>
+                <dt className="text-agri-muted">{t("soil.phosphorus")}</dt>
                 <dd>{latest.phosphorus ?? "—"}</dd>
-                <dt className="text-gray-500">{t("soil.potassium")}</dt>
+                <dt className="text-agri-muted">{t("soil.potassium")}</dt>
                 <dd>{latest.potassium ?? "—"}</dd>
-                <dt className="text-gray-500">{t("soil.organicCarbon")}</dt>
+                <dt className="text-agri-muted">{t("soil.organicCarbon")}</dt>
                 <dd>{latest.organicCarbon ?? "—"}</dd>
               </dl>
             </div>
@@ -117,21 +118,21 @@ export default function SoilWaterPage() {
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="mt-4 rounded bg-green-700 px-4 py-2 font-medium text-white"
+              className="mt-4 agri-button"
             >
               {t("soil.addRecord")}
             </button>
           ) : (
-            <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-3 rounded-lg border bg-white p-4">
+            <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-3 rounded-lg border bg-agri-bark p-4">
               <div>
-                <label htmlFor="soil-type" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="soil-type" className="block text-xs font-semibold text-agri-muted">
                   {t("soil.soilType")}
                 </label>
                 <select
                   id="soil-type"
                   value={form.soilType ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, soilType: e.target.value || null }))}
-                  className="mt-1 w-full rounded border px-3 py-2"
+                  className="agri-field mt-1 w-full"
                 >
                   <option value="">{t("soil.unknown")}</option>
                   {SOIL_TYPES.map((type) => (
@@ -153,7 +154,7 @@ export default function SoilWaterPage() {
                   ] as const
                 ).map(([field, labelKey]) => (
                   <div key={field}>
-                    <label htmlFor={`soil-${field}`} className="block text-sm font-medium text-gray-700">
+                    <label htmlFor={`soil-${field}`} className="block text-xs font-semibold text-agri-muted">
                       {t(`soil.${labelKey}`)}
                     </label>
                     <input
@@ -164,14 +165,14 @@ export default function SoilWaterPage() {
                       onChange={(e) =>
                         setForm((f) => ({ ...f, [field]: e.target.value ? Number(e.target.value) : null }))
                       }
-                      className="mt-1 w-full rounded border px-3 py-2"
+                      className="agri-field mt-1 w-full"
                     />
                   </div>
                 ))}
               </div>
 
               <div>
-                <label htmlFor="soil-tested-on" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="soil-tested-on" className="block text-xs font-semibold text-agri-muted">
                   {t("soil.testedOn")}
                 </label>
                 <input
@@ -179,17 +180,17 @@ export default function SoilWaterPage() {
                   type="date"
                   value={form.testedOn ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, testedOn: e.target.value || null }))}
-                  className="mt-1 w-full rounded border px-3 py-2"
+                  className="agri-field mt-1 w-full"
                 />
               </div>
 
-              {error ? <p className="text-sm text-red-600">{error}</p> : null}
-              {createSoilRecord.isError ? <p className="text-sm text-red-600">{t("soil.saveError")}</p> : null}
+              {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
+              {createSoilRecord.isError ? <p className="text-sm text-agri-coral">{t("soil.saveError")}</p> : null}
 
               <button
                 type="submit"
                 disabled={createSoilRecord.isPending}
-                className="rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+                className="agri-button"
               >
                 {createSoilRecord.isPending ? t("common.saving") : t("common.save")}
               </button>

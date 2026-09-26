@@ -47,16 +47,16 @@ export function YieldForm({ farmId, crops }: { farmId: string; crops: FarmCrop[]
   }
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="mt-2 space-y-3 rounded-lg border bg-white p-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="mt-2 space-y-3 rounded-lg border bg-agri-bark p-4">
       <div>
-        <label htmlFor="yield-crop" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="yield-crop" className="block text-xs font-semibold text-agri-muted">
           {t("reports.crop")}
         </label>
         <select
           id="yield-crop"
           value={cropId}
           onChange={(e) => setCropId(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         >
           {crops.map((c) => (
             <option key={c.id} value={c.id}>
@@ -68,7 +68,7 @@ export function YieldForm({ farmId, crops }: { farmId: string; crops: FarmCrop[]
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label htmlFor="yield-quantity" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="yield-quantity" className="block text-xs font-semibold text-agri-muted">
             {t("reports.quantity")}
           </label>
           <input
@@ -80,18 +80,18 @@ export function YieldForm({ farmId, crops }: { farmId: string; crops: FarmCrop[]
             inputMode="decimal"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           />
         </div>
         <div className="flex-1">
-          <label htmlFor="yield-unit" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="yield-unit" className="block text-xs font-semibold text-agri-muted">
             {t("reports.unit")}
           </label>
           <select
             id="yield-unit"
             value={unit}
             onChange={(e) => setUnit(e.target.value)}
-            className="mt-1 w-full rounded border px-3 py-2"
+            className="agri-field mt-1 w-full"
           >
             {YIELD_UNITS.map((u) => (
               <option key={u} value={u}>
@@ -103,7 +103,7 @@ export function YieldForm({ farmId, crops }: { farmId: string; crops: FarmCrop[]
       </div>
 
       <div>
-        <label htmlFor="yield-date" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="yield-date" className="block text-xs font-semibold text-agri-muted">
           {t("reports.harvestedOn")}
         </label>
         <input
@@ -112,16 +112,16 @@ export function YieldForm({ farmId, crops }: { farmId: string; crops: FarmCrop[]
           required
           value={harvestedOn}
           onChange={(e) => setHarvestedOn(e.target.value)}
-          className="mt-1 w-full rounded border px-3 py-2"
+          className="agri-field mt-1 w-full"
         />
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-agri-coral">{error}</p> : null}
 
       <button
         type="submit"
         disabled={create.isPending || crops.length === 0}
-        className="w-full rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+        className="w-full agri-button"
       >
         {create.isPending ? t("common.saving") : t("reports.addHarvest")}
       </button>

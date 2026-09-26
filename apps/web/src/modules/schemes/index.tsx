@@ -6,7 +6,8 @@ import { useSchemes } from "@/modules/schemes/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHero } from "@/components/PageHero";
+import { SelectorPanel } from "@/components/SelectorPanel";
 
 const GROUP_ORDER = ["matched", "needs_check", "other"] as const;
 
@@ -34,10 +35,10 @@ function CriterionRow({ criterion }: { criterion: SchemeCriterion }) {
     criterion.status === "matched" ? "✓" : criterion.status === "not_matched" ? "✕" : "?";
   const tone =
     criterion.status === "matched"
-      ? "text-green-700"
+      ? "text-agri-emerald"
       : criterion.status === "not_matched"
-        ? "text-red-700"
-        : "text-amber-700";
+        ? "text-agri-coral"
+        : "text-agri-amber";
 
   return (
     <li className="flex gap-2 text-sm">
@@ -59,23 +60,23 @@ function SchemeCard({ match }: { match: SchemeMatch }) {
   const unverifiable = criteria.filter((c) => c.status === "cannot_check");
 
   return (
-    <li className="rounded-lg border bg-white p-4">
+    <li className="rounded-lg border bg-agri-bark p-4">
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0 font-medium">{scheme.name}</h3>
-        <span className="shrink-0 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+        <span className="shrink-0 rounded bg-white/8 px-2 py-0.5 text-xs text-agri-mist">
           {t(`schemes.level.${scheme.level}`)}
         </span>
       </div>
 
-      {scheme.purpose ? <p className="mt-1 text-sm text-gray-600">{scheme.purpose}</p> : null}
+      {scheme.purpose ? <p className="mt-1 text-sm text-agri-mist">{scheme.purpose}</p> : null}
 
       {scheme.benefit ? (
-        <p className="mt-2 rounded bg-gray-50 px-3 py-2 text-sm">{scheme.benefit}</p>
+        <p className="mt-2 rounded bg-white/5 px-3 py-2 text-sm">{scheme.benefit}</p>
       ) : null}
 
       {checkable.length > 0 ? (
         <div className="mt-3">
-          <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+          <h4 className="text-xs font-medium uppercase tracking-wide text-agri-muted">
             {t("schemes.basedOnYourRecords")}
           </h4>
           <ul className="mt-1 space-y-1">
@@ -89,7 +90,7 @@ function SchemeCard({ match }: { match: SchemeMatch }) {
       {/* Always present — the catalog guarantees at least one. This is
           what keeps the page from reading as an eligibility verdict. */}
       <div className="mt-3">
-        <h4 className="text-xs font-medium uppercase tracking-wide text-amber-700">
+        <h4 className="text-xs font-medium uppercase tracking-wide text-agri-amber">
           {t("schemes.youMustCheck")}
         </h4>
         <ul className="mt-1 space-y-1">
@@ -99,12 +100,12 @@ function SchemeCard({ match }: { match: SchemeMatch }) {
         </ul>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-agri-muted">
         <a
           href={scheme.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-green-700 underline"
+          className="font-medium text-agri-emerald underline"
         >
           {t("schemes.officialLink")}
         </a>
@@ -114,7 +115,7 @@ function SchemeCard({ match }: { match: SchemeMatch }) {
             ? t("schemes.lastVerifiedUnknown")
             : t("schemes.lastVerified", { date: formatDate(scheme.lastVerifiedOn) })}
         </span>
-        {match.stale ? <span className="text-amber-700">{t("schemes.stale")}</span> : null}
+        {match.stale ? <span className="text-agri-amber">{t("schemes.stale")}</span> : null}
       </div>
     </li>
   );
@@ -131,12 +132,12 @@ function SchemesView({
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <p className="rounded-lg border border-agri-amber/30 bg-agri-amber/10 p-3 text-sm text-agri-amber">
         {t("schemes.disclaimer")}
       </p>
 
       {data.stateSchemesSkipped > 0 ? (
-        <p className="rounded-lg border border-dashed p-3 text-sm text-gray-600">
+        <p className="rounded-lg border border-dashed p-3 text-sm text-agri-mist">
           {/* `count` (not `n`) is what i18next pluralizes on, and Tamil,
               Telugu and Hindi each need their own plural forms. */}
           {t("schemes.stateSchemesSkipped", { count: data.stateSchemesSkipped })}
@@ -148,10 +149,10 @@ function SchemesView({
         if (inGroup.length === 0) return null;
         return (
           <section key={group}>
-            <h2 className="text-sm font-medium text-gray-700">
+            <h2 className="text-sm font-medium text-agri-mist">
               {t(`schemes.group.${group}`)} ({inGroup.length})
             </h2>
-            <p className="text-xs text-gray-500">{t(`schemes.groupHint.${group}`)}</p>
+            <p className="text-xs text-agri-muted">{t(`schemes.groupHint.${group}`)}</p>
             <ul className="mt-2 space-y-3">
               {inGroup.map((m) => (
                 <SchemeCard key={m.scheme.id} match={m} />
@@ -161,13 +162,13 @@ function SchemesView({
         );
       })}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-agri-muted">
         {data.catalogVerifiedOn === null
           ? t("schemes.catalogVerifiedUnknown")
           : t("schemes.catalogVerified", { date: formatDate(data.catalogVerifiedOn) })}
         {` · ${t("schemes.fetchedAt", { time: new Date(asOf).toLocaleTimeString() })}`}
       </p>
-      <p className="text-xs text-gray-500">{t("schemes.curatedNote")}</p>
+      <p className="text-xs text-agri-muted">{t("schemes.curatedNote")}</p>
     </div>
   );
 }
@@ -191,9 +192,9 @@ export default function SchemesPage() {
 
   return (
     <div className="p-6">
-      <PageHeader id="schemes" titleKey="nav.schemes" descKey="agent.schemes" art="/agents/schemes.webp" />
+      <PageHero id="schemes" titleKey="nav.schemes" descKey="agent.schemes" art="/agents/schemes.webp" />
 
-      {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+      {farmsLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
       {!farmsLoading && (!farms || farms.length === 0) ? (
         <div className="mt-4">
@@ -203,15 +204,15 @@ export default function SchemesPage() {
 
       {!farmsLoading && farms && farms.length > 0 ? (
         <>
-          <div className="mt-4">
-            <label htmlFor="schemes-farm-select" className="block text-sm font-medium text-gray-700">
+          <SelectorPanel id="schemes">
+            <label htmlFor="schemes-farm-select" className="block text-xs font-semibold text-agri-muted">
               {t("soil.selectFarm")}
             </label>
             <select
               id="schemes-farm-select"
               value={activeFarmId ?? ""}
               onChange={(e) => setActiveFarmId(e.target.value || null)}
-              className="mt-1 rounded border px-3 py-2"
+              className="agri-field mt-1"
             >
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
@@ -219,7 +220,7 @@ export default function SchemesPage() {
                 </option>
               ))}
             </select>
-          </div>
+          </SelectorPanel>
 
           {/* Not a blocker: central schemes still apply. It tells the
               farmer why the state-specific ones are missing. */}
@@ -233,7 +234,7 @@ export default function SchemesPage() {
             </div>
           ) : null}
 
-          {schemesLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
+          {schemesLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
 
           {isError ? (
             <div className="mt-4">

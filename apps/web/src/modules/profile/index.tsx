@@ -35,17 +35,17 @@ export default function ProfilePage() {
     <div className="p-6">
       <h1 className="text-xl font-semibold">{t("profile.title")}</h1>
 
-      {isLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
-      {isError ? <p className="mt-4 text-red-600">{t("profile.loadError")}</p> : null}
+      {isLoading ? <p className="mt-4 text-agri-muted">{t("common.loading")}</p> : null}
+      {isError ? <p className="mt-4 text-agri-coral">{t("profile.loadError")}</p> : null}
 
       {!isLoading && !isError ? (
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 max-w-sm space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">{t("profile.email")}</label>
-            <p className="mt-1 text-gray-600">{user?.email}</p>
+            <label className="block text-xs font-semibold text-agri-muted">{t("profile.email")}</label>
+            <p className="mt-1 text-agri-mist">{user?.email}</p>
           </div>
           <div>
-            <label htmlFor="profile-name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="profile-name" className="block text-xs font-semibold text-agri-muted">
               {t("profile.name")}
             </label>
             <input
@@ -53,11 +53,11 @@ export default function ProfilePage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded border px-3 py-2"
+              className="agri-field mt-1 w-full"
             />
           </div>
           <div>
-            <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="profile-phone" className="block text-xs font-semibold text-agri-muted">
               {t("profile.phone")}
             </label>
             <input
@@ -65,18 +65,18 @@ export default function ProfilePage() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="mt-1 w-full rounded border px-3 py-2"
+              className="agri-field mt-1 w-full"
             />
           </div>
 
-          {validationError ? <p className="text-sm text-red-600">{validationError}</p> : null}
-          {updateProfile.isError ? <p className="text-sm text-red-600">{t("profile.saveError")}</p> : null}
-          {updateProfile.isSuccess ? <p className="text-sm text-green-700">{t("profile.saved")}</p> : null}
+          {validationError ? <p className="text-sm text-agri-coral">{validationError}</p> : null}
+          {updateProfile.isError ? <p className="text-sm text-agri-coral">{t("profile.saveError")}</p> : null}
+          {updateProfile.isSuccess ? <p className="text-sm text-agri-emerald">{t("profile.saved")}</p> : null}
 
           <button
             type="submit"
             disabled={updateProfile.isPending}
-            className="rounded bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+            className="agri-button"
           >
             {updateProfile.isPending ? t("common.saving") : t("common.save")}
           </button>
@@ -86,7 +86,7 @@ export default function ProfilePage() {
       <button
         type="button"
         onClick={() => void signOut()}
-        className="mt-8 text-sm font-medium text-red-700 underline"
+        className="mt-8 text-sm font-medium text-agri-coral underline"
       >
         {t("auth.signOut")}
       </button>
