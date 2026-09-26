@@ -5,6 +5,7 @@ import { useFarms, useCreateFarm } from "@/modules/farms/hooks";
 import { FarmForm } from "@/modules/farms/FarmForm";
 import { EmptyState } from "@/components/EmptyState";
 import { useAppStore } from "@/stores/useAppStore";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function FarmsPage() {
   const { t } = useTranslation();
@@ -16,7 +17,7 @@ export default function FarmsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.farms")}</h1>
+      <PageHeader id="farms" titleKey="nav.farms" descKey="agent.farms" />
 
       {isLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
       {isError ? <p className="mt-4 text-red-600">{t("farms.loadError")}</p> : null}

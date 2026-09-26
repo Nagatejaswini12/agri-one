@@ -8,6 +8,7 @@ import { channelsForState } from "@/modules/marketplace/officialChannels";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
+import { PageHeader } from "@/components/PageHeader";
 
 /** A price the source didn't report renders as a dash, never as ₹0. */
 function money(value: number | null): string {
@@ -180,7 +181,7 @@ export default function MarketplacePage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("marketplace.title")}</h1>
+      <PageHeader id="marketplace" titleKey="marketplace.title" descKey="agent.marketplace" />
       <p className="mt-1 text-sm text-gray-600">{t("marketplace.intro")}</p>
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}

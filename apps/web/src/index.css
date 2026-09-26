@@ -1,3 +1,57 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /**
+   * The app sits on warm paper, not white.
+   *
+   * Three very low-opacity radial washes stand in for a photographic
+   * background: sage at the top, a warmer amber low on the right, a
+   * cooler sky tint on the left. They are fixed, so content scrolls over
+   * a steady field rather than a moving gradient, and they are painted
+   * in CSS rather than shipped as an image — it costs nothing to
+   * download and never blocks a render.
+   */
+  body {
+    background-color: theme("colors.agri.ivory");
+    background-image:
+      radial-gradient(60rem 40rem at 78% -8%, rgba(77, 154, 63, 0.1), transparent 62%),
+      radial-gradient(44rem 34rem at 4% 12%, rgba(59, 147, 201, 0.08), transparent 60%),
+      radial-gradient(52rem 38rem at 92% 88%, rgba(217, 154, 43, 0.08), transparent 64%);
+    background-attachment: fixed;
+    color: theme("colors.gray.800");
+  }
+
+  /* A visible focus ring everywhere, in the app's own green. */
+  :focus-visible {
+    outline: 2px solid theme("colors.agri.leaf");
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /**
+   * The card system. Translucent enough to let the background tint
+   * through, opaque enough that text on it stays easy to read — the
+   * blur is kept low for the same reason.
+   */
+  .agri-card {
+    @apply rounded-card border border-white/70 bg-white/75 shadow-card backdrop-blur-[2px];
+  }
+
+  .agri-card-interactive {
+    @apply agri-card transition duration-200 hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-card-hover;
+  }
+
+  /** Small uppercase label above a group of cards. */
+  .agri-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-agri-forest/60;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agri-card-interactive {
+    @apply transition-none hover:translate-y-0;
+  }
+}

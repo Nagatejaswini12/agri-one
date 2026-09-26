@@ -2,23 +2,29 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useFarmerProfile } from "@/modules/profile/hooks";
-import { useFarms } from "@/modules/farms/hooks";
+import { useFarms, useFarmCrops } from "@/modules/farms/hooks";
 import { useSoilRecords } from "@/modules/soil-water/hooks";
+import { useScans } from "@/modules/scan-crop/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { Briefing } from "@/modules/dashboard/Briefing";
 import { AgentCard } from "@/components/AgentCard";
 import { HeroVideo } from "@/components/HeroVideo";
-import { STAGES, SUPPORT_TILES, tilesForStage } from "@/app/agents";
+import { StatusStrip } from "@/components/StatusStrip";
+import { AGENT_TILES, STAGES, TOOL_TILES, tilesForStage } from "@/app/agents";
+import { accentFor, STAGE_ACCENT } from "@/app/theme";
 
 /**
- * The home screen, rearranged around the artwork.
+ * The home screen: a command centre rather than a list of links.
  *
- * Every piece of data on this page comes from the same hooks as before —
- * the farm, the soil record and the briefing are untouched. What changed
- * is the order and the weight: a hero, then the briefing, then the
- * modules as large cards grouped by the PLAN -> GROW -> PROTECT -> SELL
- * journey, instead of a column of small text blocks.
+ * Order is deliberate. The hero says where you are, the status strip
+ * says what is known right now, the orchestrator card is the one thing
+ * that reasons across everything, then the agents, then the farmer's own
+ * tools, then the journey.
+ *
+ * Every figure on this page comes from the same hooks as before — the
+ * farm, its crops, the soil record, the scans and the briefing are
+ * untouched. What changed is weight and order.
  */
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -35,6 +41,8 @@ export default function DashboardPage() {
 
   const activeFarm = farms?.find((f) => f.id === activeFarmId) ?? null;
   const { data: soilRecords } = useSoilRecords(activeFarm?.id);
+  const { data: crops } = useFarmCrops(activeFarm?.id);
+  const { data: scans } = useScans(activeFarm?.id);
   const latestSoil = soilRecords?.[0] ?? null;
 
   const greetingName = profile?.name || profile?.email?.split("@")[0] || null;
@@ -44,8 +52,14 @@ export default function DashboardPage() {
       ? t("dashboard.greeting", { name: greetingName })
       : t("dashboard.greetingFallback");
 
+  const orchestrator = accentFor("orchestrator");
+  const location = activeFarm
+    ? [activeFarm.district, activeFarm.state].filter(Boolean).join(", ")
+    : "";
+
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-4 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-4 sm:px-6">
+      {/* ---------------------------------------------------------- hero */}
       <HeroVideo
         poster="/video/dashboard-hero-poster.webp"
         sources={[
@@ -53,15 +67,19 @@ export default function DashboardPage() {
           { src: "/video/dashboard-hero.mp4", type: "video/mp4" }
         ]}
         alt={t("dashboard.heroAlt")}
-        className="h-44 sm:h-60 lg:h-72"
+        className="h-52 sm:h-72 lg:h-80"
       >
-        <h1 className="text-lg font-semibold text-white drop-shadow sm:text-2xl">{greeting}</h1>
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-white/25 backdrop-blur-sm">
+          <span className="h-1.5 w-1.5 rounded-full bg-agri-leaf" />
+          {t("appName")}
+        </span>
+        <h1 className="mt-2 text-xl font-semibold text-white drop-shadow-sm sm:text-3xl">
+          {greeting}
+        </h1>
         {activeFarm ? (
-          <p className="mt-1 text-sm text-white/90 drop-shadow sm:text-base">
-            {activeFarm.name}
-            {[activeFarm.district, activeFarm.state].filter(Boolean).length > 0
-              ? ` · ${[activeFarm.district, activeFarm.state].filter(Boolean).join(", ")}`
-              : ""}
+          <p className="mt-1 text-sm text-white/90 drop-shadow-sm sm:text-base">
+            <span className="font-medium">{activeFarm.name}</span>
+            {location ? <span className="text-white/75"> · {location}</span> : null}
           </p>
         ) : null}
       </HeroVideo>
@@ -74,116 +92,178 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {!farmsLoading && activeFarm ? (
-        <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/70 px-4 py-3 shadow-sm ring-1 ring-black/5 backdrop-blur">
-          <div className="min-w-0">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              {t("dashboard.currentFarm")}
-            </h2>
-            <p className="truncate font-medium text-gray-900">{activeFarm.name}</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {farms && farms.length > 1 ? (
-              <>
-                <label htmlFor="dashboard-farm-select" className="sr-only">
-                  {t("dashboard.switchFarm")}
-                </label>
-                <select
-                  id="dashboard-farm-select"
-                  value={activeFarm.id}
-                  onChange={(e) => setActiveFarmId(e.target.value)}
-                  className="rounded-lg border bg-white px-2 py-1 text-sm"
-                >
-                  {farms.map((farm) => (
-                    <option key={farm.id} value={farm.id}>
-                      {farm.name}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : null}
-            <Link
-              to={`/farms/${activeFarm.id}`}
-              className="shrink-0 text-sm font-medium text-green-700 underline"
-            >
-              {t("dashboard.viewFarm")}
-            </Link>
-          </div>
-        </section>
+      {activeFarm ? (
+        <StatusStrip farm={activeFarm} crops={crops} latestSoil={latestSoil} scans={scans} />
       ) : null}
 
-      {/* The briefing still loads on its own, so the cards below render
-          immediately rather than waiting on three agents. */}
+      {/* ------------------------------------------------- farm selector */}
+      {!farmsLoading && activeFarm && farms && farms.length > 1 ? (
+        <div className="agri-card mt-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+          <label htmlFor="dashboard-farm-select" className="agri-eyebrow">
+            {t("dashboard.switchFarm")}
+          </label>
+          <select
+            id="dashboard-farm-select"
+            value={activeFarm.id}
+            onChange={(e) => setActiveFarmId(e.target.value)}
+            className="rounded-lg border border-agri-forest/15 bg-white/80 px-2 py-1 text-sm"
+          >
+            {farms.map((farm) => (
+              <option key={farm.id} value={farm.id}>
+                {farm.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {/* --------------------------------------------- orchestrator card */}
       {activeFarm ? (
-        <section className="mt-5 overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-sm ring-1 ring-black/5 backdrop-blur">
-          <div className="flex items-start gap-4 border-b border-black/5 bg-gradient-to-br from-emerald-50/90 to-white/40 px-4 py-4 sm:px-5">
+        <section
+          className={`agri-card relative mt-5 overflow-hidden ring-1 ${orchestrator.ring}`}
+        >
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${orchestrator.wash}`}
+          />
+          <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
             <img
               src="/agents/orchestrator.webp"
               alt=""
               aria-hidden="true"
-              width={224}
-              height={224}
-              className="h-16 w-16 shrink-0 object-contain drop-shadow-sm sm:h-24 sm:w-24"
+              width={320}
+              height={320}
+              className="h-24 w-24 shrink-0 self-start object-contain drop-shadow-sm sm:h-32 sm:w-32 sm:self-center lg:h-36 lg:w-36"
             />
-            <div className="min-w-0 pt-1">
-              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{t("decision.title")}</h2>
-              <p className="mt-0.5 text-xs text-gray-600 sm:text-sm">{t("agent.orchestrator")}</p>
+            <div className="min-w-0 flex-1">
+              <span className={`agri-eyebrow ${orchestrator.chip} rounded-full px-2 py-0.5`}>
+                {t("dashboard.orchestratorEyebrow")}
+              </span>
+              <h2 className="mt-1.5 text-lg font-semibold text-agri-forest sm:text-2xl">
+                {t("decision.title")}
+              </h2>
+              <p className="mt-1 max-w-prose text-sm text-gray-600">
+                {t("dashboard.orchestratorBlurb")}
+              </p>
+
+              {/* What the briefing actually reasons over. Labels only —
+                  no values, so this cannot imply a reading that has not
+                  been fetched. */}
+              <ul className="mt-3 flex flex-wrap gap-1.5">
+                {["farms", "weather", "market", "soil"].map((id) => {
+                  const a = accentFor(id);
+                  const label =
+                    id === "farms" ? t("dashboard.currentFarm") : t(`nav.${id === "soil" ? "soilWater" : id}`);
+                  return (
+                    <li
+                      key={id}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${a.chip}`}
+                    >
+                      {label}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
-          <div className="px-1 pb-1">
+
+          <div className="relative border-t border-agri-forest/8 bg-white/45 px-1 pb-1">
             <Briefing farm={activeFarm} hideHeading />
           </div>
         </section>
       ) : null}
 
-      {STAGES.map(({ stage, titleKey }) => (
-        <section key={stage} className="mt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t(titleKey)}</h2>
-          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
-            {tilesForStage(stage).map((tile) => (
-              <AgentCard key={tile.id} tile={tile} />
-            ))}
-          </div>
-        </section>
-      ))}
-
-      <section className="mt-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {t("dashboard.supportTools")}
-        </h2>
-        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {SUPPORT_TILES.map((tile) => (
+      {/* -------------------------------------------------- the AI agents */}
+      <section className="mt-7">
+        <SectionHeading eyebrow={t("dashboard.agentsTitle")} note={t("dashboard.agentsNote")} />
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {AGENT_TILES.map((tile) => (
             <AgentCard key={tile.id} tile={tile} />
           ))}
         </div>
       </section>
 
+      {/* ------------------------------------------------------ the tools */}
+      <section className="mt-7">
+        <SectionHeading eyebrow={t("dashboard.toolsTitle")} note={t("dashboard.toolsNote")} />
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          {TOOL_TILES.map((tile) => (
+            <AgentCard key={tile.id} tile={tile} compact />
+          ))}
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------- the journey */}
+      <section className="mt-8">
+        <SectionHeading eyebrow={t("dashboard.journeyTitle")} note={t("dashboard.journeyNote")} />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {STAGES.map(({ stage, titleKey }) => {
+            const s = STAGE_ACCENT[stage];
+            return (
+              <div key={stage} className="agri-card overflow-hidden">
+                <div className={`flex items-center gap-2 bg-gradient-to-r ${s.header} px-4 py-2.5`}>
+                  <span className={`h-2 w-2 rounded-full ${s.dot}`} aria-hidden="true" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-agri-forest">
+                    {t(titleKey)}
+                  </h3>
+                </div>
+                <ul className="divide-y divide-agri-forest/8">
+                  {tilesForStage(stage).map((tile) => (
+                    <li key={tile.id}>
+                      <Link
+                        to={tile.to}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 transition hover:bg-white/70 motion-reduce:transition-none"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-medium text-agri-forest">
+                          {t(tile.labelKey)}
+                        </span>
+                        <span aria-hidden="true" className="text-agri-forest/35">
+                          &rsaquo;
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* -------------------------------------------------- soil snapshot */}
       {activeFarm ? (
-        <section className="mt-6">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {t("dashboard.soilSummary")}
-          </h2>
+        <section className="mt-7">
+          <SectionHeading eyebrow={t("dashboard.soilSummary")} />
           {latestSoil ? (
-            <div className="mt-2 rounded-2xl border border-white/60 bg-white/70 p-4 text-sm shadow-sm ring-1 ring-black/5 backdrop-blur">
-              <p>
-                {t("soil.ph")}: {latestSoil.ph ?? "—"} · {t("soil.soilType")}: {latestSoil.soilType ?? "—"}
+            <div className={`agri-card mt-3 p-4 text-sm ring-1 ${accentFor("soil").ring}`}>
+              <p className="text-gray-700">
+                {t("soil.ph")}: <span className="font-semibold text-agri-forest">{latestSoil.ph ?? "—"}</span>
+                {" · "}
+                {t("soil.soilType")}:{" "}
+                <span className="font-semibold text-agri-forest">{latestSoil.soilType ?? "—"}</span>
               </p>
-              <Link to="/soil-water" className="mt-2 inline-block text-green-700 underline">
+              <Link to="/soil-water" className="mt-2 inline-block font-medium text-agri-leaf underline">
                 {t("dashboard.viewSoil")}
               </Link>
             </div>
           ) : (
-            <div className="mt-2">
+            <div className="mt-3">
               <EmptyState message={t("soil.empty")} actionLabel={t("soil.addRecord")} actionTo="/soil-water" />
             </div>
           )}
         </section>
       ) : null}
 
-      <p className="mt-8 rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-        {t("dashboard.agentsComingSoon")}
-      </p>
+      <p className="agri-card mt-8 p-4 text-sm text-gray-500">{t("dashboard.agentsComingSoon")}</p>
+    </div>
+  );
+}
+
+function SectionHeading({ eyebrow, note }: { eyebrow: string; note?: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      <h2 className="text-base font-semibold text-agri-forest sm:text-lg">{eyebrow}</h2>
+      {note ? <p className="text-xs text-gray-500 sm:text-sm">{note}</p> : null}
     </div>
   );
 }

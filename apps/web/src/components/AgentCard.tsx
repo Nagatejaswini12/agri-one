@@ -1,38 +1,46 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { AgentTile } from "@/app/agents";
+import { accentFor } from "@/app/theme";
+import { ModuleIcon } from "@/components/ModuleIcon";
 
 /**
- * A module, presented as artwork first.
+ * Artwork first, then a name, then one short line.
  *
- * The picture is the card, not a bullet beside the text: ~112px on a
- * desktop tile and ~80px on a phone. Everything else is one label and
- * one short line, because a farmer scanning the home screen is choosing
- * a destination, not reading a report.
+ * The picture is the card rather than a bullet beside it: about 112px on
+ * a desktop tile, 96 on a tablet, 80 on a phone. A farmer scanning the
+ * home screen is choosing a destination, not reading a report, so there
+ * is nothing else on it.
  *
- * The artwork never carries information. No number, status or
- * availability is conveyed by it, so a missing picture costs nothing but
- * looks -- which is what lets the four modules without their own art
- * ship on a plain tile instead of borrowing someone else's.
+ * The accent tints the card around the artwork — a wash behind it and a
+ * hairline edge — and never the artwork itself, which arrives already
+ * coloured. Nothing here carries information: no number, status or
+ * availability is conveyed by colour or picture, so a card cannot imply
+ * something the page behind it has not fetched.
  */
-export function AgentCard({ tile }: { tile: AgentTile }) {
+export function AgentCard({ tile, compact = false }: { tile: AgentTile; compact?: boolean }) {
   const { t } = useTranslation();
+  const accent = accentFor(tile.id);
   const name = t(tile.labelKey);
+
+  const artBox = compact
+    ? "h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]"
+    : "h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28";
 
   return (
     <Link
       to={tile.to}
       aria-label={t("dashboard.openModule", { name })}
-      className="group relative flex min-w-0 flex-col items-center gap-1 overflow-hidden rounded-2xl border border-white/60 bg-white/70 p-4 text-center shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 sm:flex-row sm:gap-4 sm:p-5 sm:text-left"
+      className={`agri-card-interactive group relative flex min-w-0 items-center gap-3 overflow-hidden p-4 ring-1 sm:gap-4 ${accent.ring} ${
+        compact ? "sm:p-4" : "sm:p-5"
+      }`}
     >
-      {/* A soft wash behind the art so the glass reads against the card
-          rather than floating on flat white. */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-green-50/70 via-transparent to-transparent"
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent.wash}`}
       />
 
-      <span className="relative flex h-20 w-20 shrink-0 items-center justify-center sm:h-28 sm:w-28 lg:h-32 lg:w-32">
+      <span className={`relative flex shrink-0 items-center justify-center ${artBox}`}>
         {tile.art ? (
           <img
             src={tile.art}
@@ -40,46 +48,38 @@ export function AgentCard({ tile }: { tile: AgentTile }) {
             aria-hidden="true"
             loading="lazy"
             decoding="async"
-            width={224}
-            height={224}
-            className="h-full w-full object-contain drop-shadow-sm transition group-hover:scale-[1.04]"
+            width={320}
+            height={320}
+            className="h-full w-full object-contain drop-shadow-sm transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
-          <ArtworkPending />
+          <ModuleIcon
+            id={tile.id}
+            className="h-full w-full drop-shadow-sm transition duration-200 group-hover:scale-[1.05] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          />
         )}
       </span>
 
-      {/* The title wraps rather than truncating. `truncate` keeps the
-          line on one row, and a centred row that overruns its card gets
-          clipped at BOTH ends -- which turned "வானிலை & ஆலோசனை" into
-          "ானிலை & ஆலோசனை" on a phone. Tamil, Telugu and Hindi labels are
-          routinely longer than the English they were laid out against. */}
+      {/* Titles wrap rather than truncate. A centred one-line title that
+          overruns its card is clipped at BOTH ends, which turned
+          "வானிலை & ஆலோசனை" into "ானிலை & ஆலோசனை" — and Tamil, Telugu and
+          Hindi labels are routinely longer than the English these were
+          laid out against. */}
       <span className="relative flex min-w-0 flex-col">
-        <span className="line-clamp-2 text-sm font-semibold text-gray-900 sm:text-lg">{name}</span>
-        <span className="mt-0.5 line-clamp-2 text-xs text-gray-500 sm:text-sm">{t(tile.descKey)}</span>
+        <span
+          className={`line-clamp-2 font-semibold text-agri-forest ${
+            compact ? "text-sm" : "text-sm sm:text-base lg:text-lg"
+          }`}
+        >
+          {name}
+        </span>
+        {/* Three lines from `lg`, where the artwork is at its largest and
+            leaves the text the least room. Two lines held the English
+            blurbs but cut the Tamil ones mid-sentence. */}
+        <span className="mt-0.5 line-clamp-2 text-xs text-gray-600 sm:text-sm lg:line-clamp-3">
+          {t(tile.descKey)}
+        </span>
       </span>
     </Link>
-  );
-}
-
-/**
- * Stand-in for the four modules whose artwork has not been made yet.
- *
- * Deliberately a frosted, empty pane: it matches the card system so the
- * grid stays even, and it is plainly a placeholder rather than a picture
- * borrowed from another module, which would quietly mislabel the page.
- */
-function ArtworkPending() {
-  const { t } = useTranslation();
-  return (
-    <span
-      title={t("dashboard.artworkPending")}
-      className="flex h-full w-full items-center justify-center rounded-2xl border border-dashed border-green-700/25 bg-gradient-to-br from-white/80 via-green-50/60 to-emerald-100/50 shadow-inner"
-    >
-      <span
-        aria-hidden="true"
-        className="h-8 w-8 rounded-full border border-green-700/20 bg-white/70 shadow-sm sm:h-10 sm:w-10"
-      />
-    </span>
   );
 }

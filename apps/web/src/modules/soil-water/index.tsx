@@ -4,6 +4,7 @@ import { useFarms } from "@/modules/farms/hooks";
 import { useSoilRecords, useCreateSoilRecord, type SoilRecordInput } from "@/modules/soil-water/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 const SOIL_TYPES = ["sandy", "loamy", "clay", "silty", "black", "red", "alluvial"] as const;
 
@@ -51,7 +52,7 @@ export default function SoilWaterPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.soilWater")}</h1>
+      <PageHeader id="soil" titleKey="nav.soilWater" descKey="agent.soil" art="/agents/soil.webp" />
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
 

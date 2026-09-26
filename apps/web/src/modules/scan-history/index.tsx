@@ -5,6 +5,7 @@ import { useFarms, useFarmCrops } from "@/modules/farms/hooks";
 import { useScans } from "@/modules/scan-crop/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 const CONFIDENCE_BADGE: Record<CropDiagnosisResult["confidenceLevel"], string> = {
   high: "bg-green-100 text-green-800",
@@ -68,7 +69,7 @@ export default function ScanHistoryPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.scanHistory")}</h1>
+      <PageHeader id="scanHistory" titleKey="nav.scanHistory" descKey="agent.scanHistory" />
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
 

@@ -12,6 +12,7 @@ import {
   selectPestActivity,
   type PestActivityRecord
 } from "./selectPestActivity";
+import { PageHeader } from "@/components/PageHeader";
 
 /**
  * "Pest Activity on Your Farm".
@@ -136,7 +137,7 @@ export default function PestAlertsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("pestActivity.title")}</h1>
+      <PageHeader id="pest" titleKey="pestActivity.title" descKey="agent.pest" />
       <p className="mt-2 text-sm text-gray-600">{t("pestActivity.intro")}</p>
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}

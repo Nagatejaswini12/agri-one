@@ -6,6 +6,7 @@ import { useMarket } from "@/modules/market/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
+import { PageHeader } from "@/components/PageHeader";
 
 /**
  * A price the source didn't report renders as a dash, never as ₹0 — a
@@ -149,7 +150,7 @@ export default function MarketPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.market")}</h1>
+      <PageHeader id="market" titleKey="nav.market" descKey="agent.market" art="/agents/market.webp" />
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
 

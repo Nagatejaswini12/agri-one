@@ -193,7 +193,15 @@
     "heroAlt": "Farmland at sunrise",
     "artworkPending": "Custom artwork for this module is still to come.",
     "openModule": "Open {{name}}",
-    "supportTools": "Tools"
+    "supportTools": "Tools",
+    "orchestratorEyebrow": "AI decision agent",
+    "orchestratorBlurb": "Reads your farm, the weather, today's market and your soil record together, and says what stands out.",
+    "agentsTitle": "AI agents",
+    "agentsNote": "Live sources, read for your farm",
+    "toolsTitle": "Farm tools",
+    "toolsNote": "Your own records",
+    "journeyTitle": "Your season",
+    "journeyNote": "Plan, grow, protect, sell"
   },
   "scanHistory": {
     "empty": "No scans yet for this farm.",
@@ -510,7 +518,7 @@
     }
   },
   "marketplace": {
-    "title": "Where you can sell",
+    "title": "Marketplace",
     "intro": "Mandis that reported a price for your crop today.",
     "noFarm": "Add a farm first to see where you can sell.",
     "noLocation": "This farm has no state and district saved. Selling places are looked up by district.",
@@ -569,5 +577,14 @@
     "reports": "Your costs and harvests",
     "scanHistory": "Your past scans",
     "orchestrator": "Today's farm briefing"
+  },
+  "status": {
+    "title": "At a glance",
+    "location": "Location",
+    "crop": "Crops",
+    "latestScan": "Latest scan",
+    "soilTested": "Tested {{date}}",
+    "soilRecorded": "Recorded",
+    "none": "Not recorded"
   }
 }

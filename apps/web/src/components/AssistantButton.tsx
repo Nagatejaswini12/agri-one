@@ -55,10 +55,12 @@ export function AssistantButton() {
       to="/voice-ai"
       aria-label={t("nav.voiceAi")}
       style={{
-        // Clear of the bottom navigation and of the device's own inset.
+        // Clear of the phone bar and of the device's own inset. The bar
+        // is hidden from `lg` up, where the stages move into the header,
+        // so the button drops to a normal corner offset there.
         bottom: "calc(4.25rem + env(safe-area-inset-bottom, 0px))"
       }}
-      className={`fixed right-3 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white/85 shadow-lg ring-1 ring-black/5 backdrop-blur transition-[transform,opacity] duration-200 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 motion-reduce:transition-none sm:right-5 sm:h-16 sm:w-16 ${
+      className={`fixed right-3 z-30 flex h-14 w-14 lg:!bottom-6 items-center justify-center rounded-full border border-white/70 bg-white/85 shadow-lg ring-1 ring-black/5 backdrop-blur transition-[transform,opacity] duration-200 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700 motion-reduce:transition-none sm:right-5 sm:h-16 sm:w-16 ${
         hidden ? "pointer-events-none translate-y-24 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >

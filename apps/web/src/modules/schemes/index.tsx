@@ -6,6 +6,7 @@ import { useSchemes } from "@/modules/schemes/hooks";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
+import { PageHeader } from "@/components/PageHeader";
 
 const GROUP_ORDER = ["matched", "needs_check", "other"] as const;
 
@@ -190,7 +191,7 @@ export default function SchemesPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.schemes")}</h1>
+      <PageHeader id="schemes" titleKey="nav.schemes" descKey="agent.schemes" art="/agents/schemes.webp" />
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
 

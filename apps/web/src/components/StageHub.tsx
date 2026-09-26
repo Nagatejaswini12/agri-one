@@ -1,13 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { AgentCard } from "@/components/AgentCard";
 import { tilesForStage, type Stage } from "@/app/agents";
+import { STAGE_ACCENT } from "@/app/theme";
 
 /**
- * Landing page for a PLAN/GROW/PROTECT/SELL stage.
- *
- * It now renders the same large artwork cards the dashboard uses, from
- * the same registry, so a stage page and the home screen can never
- * disagree about what a stage contains or what a module is called.
+ * A stage page: the same artwork cards the dashboard uses, from the same
+ * registry, under the stage's own tint. A stage page and the home screen
+ * can therefore never disagree about what a stage contains.
  */
 export function StageHub({
   stage,
@@ -19,15 +18,22 @@ export function StageHub({
   descriptionKey: string;
 }) {
   const { t } = useTranslation();
-  const tiles = tilesForStage(stage);
+  const accent = STAGE_ACCENT[stage];
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-5 sm:px-6">
-      <h1 className="text-xl font-semibold">{t(titleKey)}</h1>
-      <p className="mt-1 text-gray-600">{t(descriptionKey)}</p>
+    <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6">
+      <div className={`agri-card overflow-hidden bg-gradient-to-r ${accent.header}`}>
+        <div className="flex items-center gap-2.5 px-5 py-4">
+          <span className={`h-2.5 w-2.5 rounded-full ${accent.dot}`} aria-hidden="true" />
+          <div>
+            <h1 className="text-lg font-semibold text-agri-forest sm:text-xl">{t(titleKey)}</h1>
+            <p className="mt-0.5 text-sm text-gray-600">{t(descriptionKey)}</p>
+          </div>
+        </div>
+      </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4">
-        {tiles.map((tile) => (
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {tilesForStage(stage).map((tile) => (
           <AgentCard key={tile.id} tile={tile} />
         ))}
       </div>

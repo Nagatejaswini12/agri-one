@@ -13,6 +13,7 @@ import { FinancialForm } from "@/modules/reports/FinancialForm";
 import { YieldForm } from "@/modules/reports/YieldForm";
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 
 /** Indian grouping, and always a real number — never a placeholder. */
 function money(value: number): string {
@@ -137,7 +138,7 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.reports")}</h1>
+      <PageHeader id="reports" titleKey="nav.reports" descKey="agent.reports" />
       <p className="mt-1 text-sm text-gray-600">{t("reports.intro")}</p>
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}

@@ -1,22 +1,21 @@
 /**
- * The modules as the farmer meets them, grouped by the PLAN -> GROW ->
- * PROTECT -> SELL journey the app is organised around.
+ * The modules as the farmer meets them.
  *
- * This is presentation only: every `to` is an existing route and nothing
- * here changes what a module does. It exists so the dashboard, the stage
- * hubs and the navigation all describe the same set of modules from one
- * place instead of three drifting lists.
+ * One list, read by the dashboard, the stage hubs and the navigation, so
+ * they cannot drift apart about what exists or what it is called.
  *
- * `art` is null for the four modules that have no custom artwork yet.
- * They deliberately render a plain frosted tile rather than borrowing
- * another module's picture, so it stays obvious which ones are still
- * waiting for their own.
+ * `art` points at supplied artwork; where there is none the card draws
+ * its own icon from ModuleIcon under the same id. Either way the card
+ * looks finished — nothing renders as a placeholder.
+ *
+ * This is presentation only. Every `to` is an existing route and nothing
+ * here changes what a module does.
  */
 
 export type Stage = "plan" | "grow" | "protect" | "sell";
 
 export interface AgentTile {
-  /** Stable id, also the artwork filename when there is one. */
+  /** Stable id: also the accent key and the drawn-icon key. */
   id: string;
   to: string;
   /** Existing nav label key — no new names for existing routes. */
@@ -27,23 +26,8 @@ export interface AgentTile {
   stage: Stage;
 }
 
+/** The six agents that reason over live data. Large cards. */
 export const AGENT_TILES: AgentTile[] = [
-  {
-    id: "farms",
-    to: "/farms",
-    labelKey: "nav.farms",
-    descKey: "agent.farms",
-    art: null,
-    stage: "plan"
-  },
-  {
-    id: "soil",
-    to: "/soil-water",
-    labelKey: "nav.soilWater",
-    descKey: "agent.soil",
-    art: "/agents/soil.webp",
-    stage: "plan"
-  },
   {
     id: "weather",
     to: "/weather",
@@ -61,20 +45,12 @@ export const AGENT_TILES: AgentTile[] = [
     stage: "grow"
   },
   {
-    id: "pest",
-    to: "/pest-alerts",
-    labelKey: "nav.pestAlerts",
-    descKey: "agent.pest",
-    art: null,
-    stage: "protect"
-  },
-  {
-    id: "schemes",
-    to: "/schemes",
-    labelKey: "nav.schemes",
-    descKey: "agent.schemes",
-    art: "/agents/schemes.webp",
-    stage: "protect"
+    id: "soil",
+    to: "/soil-water",
+    labelKey: "nav.soilWater",
+    descKey: "agent.soil",
+    art: "/agents/soil.webp",
+    stage: "plan"
   },
   {
     id: "market",
@@ -85,17 +61,13 @@ export const AGENT_TILES: AgentTile[] = [
     stage: "sell"
   },
   {
-    id: "marketplace",
-    to: "/marketplace",
-    labelKey: "nav.marketplace",
-    descKey: "agent.marketplace",
-    art: null,
-    stage: "sell"
-  }
-];
-
-/** Reached from anywhere rather than belonging to one stage. */
-export const SUPPORT_TILES: AgentTile[] = [
+    id: "schemes",
+    to: "/schemes",
+    labelKey: "nav.schemes",
+    descKey: "agent.schemes",
+    art: "/agents/schemes.webp",
+    stage: "protect"
+  },
   {
     id: "voice",
     to: "/voice-ai",
@@ -103,6 +75,18 @@ export const SUPPORT_TILES: AgentTile[] = [
     descKey: "agent.voice",
     art: "/agents/voice.webp",
     stage: "grow"
+  }
+];
+
+/** Supporting tools: the farmer's own records. Smaller cards. */
+export const TOOL_TILES: AgentTile[] = [
+  {
+    id: "farms",
+    to: "/farms",
+    labelKey: "nav.farms",
+    descKey: "agent.farms",
+    art: null,
+    stage: "plan"
   },
   {
     id: "reports",
@@ -119,16 +103,48 @@ export const SUPPORT_TILES: AgentTile[] = [
     descKey: "agent.scanHistory",
     art: null,
     stage: "grow"
+  },
+  {
+    id: "pest",
+    to: "/pest-alerts",
+    labelKey: "nav.pestAlerts",
+    descKey: "agent.pest",
+    art: null,
+    stage: "protect"
+  },
+  {
+    id: "marketplace",
+    to: "/marketplace",
+    labelKey: "nav.marketplace",
+    descKey: "agent.marketplace",
+    art: null,
+    stage: "sell"
   }
 ];
 
-export const STAGES: { stage: Stage; titleKey: string }[] = [
-  { stage: "plan", titleKey: "stages.plan.title" },
-  { stage: "grow", titleKey: "stages.grow.title" },
-  { stage: "protect", titleKey: "stages.protect.title" },
-  { stage: "sell", titleKey: "stages.sell.title" }
+export const ALL_TILES = [...AGENT_TILES, ...TOOL_TILES];
+
+export const STAGES: { stage: Stage; titleKey: string; descriptionKey: string }[] = [
+  { stage: "plan", titleKey: "stages.plan.title", descriptionKey: "stages.plan.description" },
+  { stage: "grow", titleKey: "stages.grow.title", descriptionKey: "stages.grow.description" },
+  { stage: "protect", titleKey: "stages.protect.title", descriptionKey: "stages.protect.description" },
+  { stage: "sell", titleKey: "stages.sell.title", descriptionKey: "stages.sell.description" }
 ];
 
+/**
+ * The two modules each stage covers, in the order the journey names
+ * them: PLAN is the farm and its soil, GROW is weather and crop health,
+ * PROTECT is pests and the schemes that help, SELL is price then place.
+ */
+const STAGE_MEMBERS: Record<Stage, string[]> = {
+  plan: ["farms", "soil"],
+  grow: ["weather", "diagnosis"],
+  protect: ["pest", "schemes"],
+  sell: ["market", "marketplace"]
+};
+
 export function tilesForStage(stage: Stage): AgentTile[] {
-  return AGENT_TILES.filter((t) => t.stage === stage);
+  return STAGE_MEMBERS[stage]
+    .map((id) => ALL_TILES.find((t) => t.id === id))
+    .filter((t): t is AgentTile => t !== undefined);
 }

@@ -6,6 +6,7 @@ import { useDiagnoseCrop, type DiagnoseCropOutcome } from "@/modules/scan-crop/h
 import { useAppStore } from "@/stores/useAppStore";
 import { EmptyState } from "@/components/EmptyState";
 import { DataUnavailable } from "@/components/DataUnavailable";
+import { PageHeader } from "@/components/PageHeader";
 
 const CONFIDENCE_BADGE: Record<CropDiagnosisResult["confidenceLevel"], string> = {
   high: "bg-green-100 text-green-800",
@@ -159,7 +160,7 @@ export default function ScanCropPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold">{t("nav.scanCrop")}</h1>
+      <PageHeader id="diagnosis" titleKey="nav.scanCrop" descKey="agent.diagnosis" art="/agents/diagnosis.webp" />
 
       {farmsLoading ? <p className="mt-4 text-gray-500">{t("common.loading")}</p> : null}
 
