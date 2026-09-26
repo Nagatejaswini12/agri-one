@@ -31,3 +31,6 @@ services/n8n/data/
 
 # supabase cli scratch
 supabase/.temp/
+
+.vercel
+.env*
