@@ -181,6 +181,87 @@ check("a variant district resolves to the canonical name",
   variant.status === "ok" && variant.data.district === "Thiruvellore",
   variant.status === "ok" ? variant.data.district : variant.reason);
 
+// ---- A-I. the request follows the selected farm and crop --------------
+// The point of these: Coimbatore and Tomato are a test combination, not a
+// default. Whatever is asked for is what goes upstream, and nothing is
+// ever quietly swapped for something that happens to have data.
+section("[OFFLINE] A-C. every combination reaches AGMARKNET unchanged");
+
+/** Runs one lookup and returns the filters actually sent upstream. */
+async function filtersFor(payload, records = [fixtureRecord()]) {
+  upstream = json({ records });
+  lastUpstreamUrl = null;
+  const res = await (await call(payload)).json();
+  bodies.push(res);
+  const url = lastUpstreamUrl ? new URL(lastUpstreamUrl) : null;
+  return {
+    res,
+    calls: upstreamCalls,
+    state: url?.searchParams.get("filters[state]") ?? null,
+    district: url?.searchParams.get("filters[district]") ?? null,
+    commodity: url?.searchParams.get("filters[commodity]") ?? null
+  };
+}
+
+const COMBINATIONS = [
+  ["A", { state: "Tamil Nadu", district: "Coimbatore", commodity: "Tomato" }],
+  ["B", { state: "Tamil Nadu", district: "Madurai", commodity: "Onion" }],
+  ["C", { state: "Maharashtra", district: "Pune", commodity: "Onion" }],
+  ["C2", { state: "Uttar Pradesh", district: "Agra", commodity: "Potato" }],
+  ["C3", { state: "Keralam", district: "Ernakulam", commodity: "Banana" }],
+  ["C4", { state: "Punjab", district: "Ludhiana", commodity: "Wheat" }]
+];
+
+for (const [label, combo] of COMBINATIONS) {
+  const f = await filtersFor(combo);
+  check(`${label}. ${combo.state} / ${combo.district} / ${combo.commodity} is sent verbatim`,
+    f.state === combo.state && f.district === combo.district && f.commodity === combo.commodity,
+    `sent ${f.state} / ${f.district} / ${f.commodity}`);
+  check(`${label}. the snapshot reports the district that was asked for`,
+    f.res.status === "ok" && f.res.data.district === combo.district,
+    f.res.status === "ok" ? f.res.data.district : f.res.reason);
+}
+
+// ---- H, I. no fallback to the test combination ------------------------
+section("[OFFLINE] H-I. no fallback to Coimbatore or Tomato");
+const nonTest = await filtersFor({ state: "Maharashtra", district: "Pune", commodity: "Onion" });
+check("H. a non-Coimbatore lookup never sends Coimbatore", nonTest.district !== "Coimbatore", String(nonTest.district));
+check("I. a non-Tomato lookup never sends Tomato", nonTest.commodity !== "Tomato", String(nonTest.commodity));
+check("H. the response never names Coimbatore for a Pune farm",
+  !/Coimbatore/i.test(JSON.stringify(nonTest.res)));
+check("I. the response never names Tomato for an Onion lookup",
+  !/Tomato/i.test(JSON.stringify(nonTest.res)));
+
+// ---- 7. supported district that reports nothing today -----------------
+section("[OFFLINE] E. a supported district with no rows is not re-searched");
+const beforeEmpty = upstreamCalls;
+const emptyDay = await filtersFor({ state: "Maharashtra", district: "Pune", commodity: "Onion" }, []);
+check("E. an empty day for a real district reports unavailable",
+  emptyDay.res.status === "unavailable" && /Onion/.test(emptyDay.res.reason) && /Pune/.test(emptyDay.res.reason),
+  emptyDay.res.reason);
+check("E. exactly one upstream request was made - no second district was tried",
+  upstreamCalls === beforeEmpty + 1, `${upstreamCalls - beforeEmpty} call(s)`);
+check("E. the empty-day message names the farmer's own district, not a fallback",
+  !/Coimbatore/i.test(emptyDay.res.reason));
+
+// ---- F. missing farm location -----------------------------------------
+section("[OFFLINE] F. missing farm location");
+const beforeMissing = upstreamCalls;
+for (const [label, payload] of [
+  ["no state", { district: "Pune", commodity: "Onion" }],
+  ["no district", { state: "Maharashtra", commodity: "Onion" }],
+  ["neither", { commodity: "Onion" }],
+  ["null values", { state: null, district: null, commodity: "Onion" }],
+  ["empty strings", { state: "", district: "", commodity: "Onion" }]
+]) {
+  const r = await (await call(payload)).json();
+  bodies.push(r);
+  check(`F. ${label} is refused`, r.status === "unavailable", r.reason);
+  check(`F. ${label} never falls back to a real district`,
+    !/Coimbatore|Pune|Madurai/i.test(r.reason ?? "") || /No market district matching/.test(r.reason));
+}
+check("F. no upstream request is made without a location", upstreamCalls === beforeMissing);
+
 // ---- 2. empty AGMARKNET response --------------------------------------
 section("[OFFLINE] 2. empty response");
 upstream = json({ records: [] });

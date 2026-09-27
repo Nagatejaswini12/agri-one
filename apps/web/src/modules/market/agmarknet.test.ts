@@ -122,6 +122,65 @@ test("the query matches what the workflow sent", () => {
   assert.equal(q.get("api-key"), null, "the key is never built into the shared query");
 });
 
+test("the query carries whatever was asked for — there is no default", () => {
+  // Coimbatore/Tomato is a test combination, not a fallback. Every
+  // supported state, district and crop must travel through unchanged.
+  const combos = [
+    { state: "Tamil Nadu", district: "Madurai", commodity: "Onion" },
+    { state: "Maharashtra", district: "Pune", commodity: "Onion" },
+    { state: "Uttar Pradesh", district: "Agra", commodity: "Potato" },
+    { state: "Keralam", district: "Ernakulam", commodity: "Banana" },
+    { state: "Punjab", district: "Ludhiana", commodity: "Wheat" }
+  ];
+  for (const c of combos) {
+    const q = agmarknetQuery(c);
+    assert.equal(q.get("filters[state]"), c.state);
+    assert.equal(q.get("filters[district]"), c.district);
+    assert.equal(q.get("filters[commodity]"), c.commodity);
+    assert.notEqual(q.get("filters[district]"), "Coimbatore");
+    assert.notEqual(q.get("filters[commodity]"), "Tomato");
+  }
+});
+
+test("a district that is genuinely elsewhere resolves to nothing, not to the nearest real one", () => {
+  for (const bad of ["Nowhereville", "", "   ", "12345", "Reykjavik", "Pune"]) {
+    const r = resolveLocation("Tamil Nadu", bad, "Tomato");
+    assert.equal(r.resolved, false, `"${bad}" should not resolve in Tamil Nadu`);
+    assert.equal(r.district, "", `"${bad}" must not yield a district`);
+  }
+});
+
+test("a vowel variant of a district DOES resolve — that is the rule, not a fallback", () => {
+  // Indic transliteration varies almost entirely in vowels and
+  // aspirates, so the consonant skeleton is deliberately what matches.
+  // "Coimbatoor" is the same place spelled differently, and resolving it
+  // is the feature; what must never resolve is a different place.
+  for (const variant of ["Coimbatoor", "coimbatore", "COIMBATORE", "Coimbatore "]) {
+    const r = resolveLocation("Tamil Nadu", variant, "Tomato");
+    assert.equal(r.resolved, true, `"${variant}" is the same district`);
+    assert.equal(r.district, "Coimbatore");
+  }
+});
+
+test("the rule normalises vowels and aspirates, not consonants", () => {
+  // "Koimbatore" swaps a consonant, so it does not resolve. That is the
+  // safe direction to fail in — a consonant swap can point at a genuinely
+  // different district — but it does mean such a farmer gets the honest
+  // "no district matching" message rather than their prices, and has to
+  // correct the spelling on their farm record.
+  const r = resolveLocation("Tamil Nadu", "Koimbatore", "Tomato");
+  assert.equal(r.resolved, false);
+  assert.equal(r.district, "");
+});
+
+test("a crop name is passed through verbatim, whatever it is", () => {
+  for (const crop of ["Onion", "Potato", "Banana", "Bhindi(Ladies Finger)", "Paddy(Dhan)(Common)"]) {
+    const r = resolveLocation("Tamil Nadu", "Madurai", crop);
+    assert.equal(r.resolved, true);
+    assert.equal(r.commodity, crop);
+  }
+});
+
 // ---------------------------------------------------------- the mapping
 
 function record(over: Record<string, unknown> = {}) {
