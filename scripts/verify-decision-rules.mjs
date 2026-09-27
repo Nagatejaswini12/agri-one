@@ -17,6 +17,7 @@
  *   node scripts/verify-decision-rules.mjs
  */
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 
 const SRC = "services/n8n/workflows/src";
 const WF = "services/n8n/workflows";
@@ -79,6 +80,118 @@ const ENGLISH_BANNED = [
   "herbicide", "urea", "npk", "fertiliser", "fertilizer", "chemical", "treat",
   "cure", "ml/l", "kg/ha", "g/l", "per hectare", "per acre of"
 ];
+
+console.log("\n=== the repo rule table matches the n8n one ===");
+// The Orchestrator is now served from /api/orchestrator, which uses
+// apps/web/src/modules/dashboard/decisionRules.ts. The n8n workflow is
+// kept as a rollback copy, so the rule table exists in two places and
+// they must not drift — this is the most safety-relevant code in the
+// repo, and a rule that quietly diverges is a rule nobody reviewed.
+const REPO_RULES = "apps/web/src/modules/dashboard/decisionRules.ts";
+const repoRules = read(REPO_RULES);
+
+// Four market keys are emitted through a ternary inside a multi-line
+// emit( call, which the "emit(" regex cannot see. Collect those from
+// both sources so the two sides are counted the same way.
+const TERNARY_KEYS = /\?\s*"([A-Za-z0-9_]+)"\s*:\s*"([A-Za-z0-9_]+)"/g;
+for (const m of rules.matchAll(TERNARY_KEYS)) { keys.add(m[1]); keys.add(m[2]); }
+
+const repoKeys = new Set();
+for (const m of repoRules.matchAll(/emit\(\s*"([A-Za-z0-9_]+)"/g)) repoKeys.add(m[1]);
+for (const m of repoRules.matchAll(/key:\s*"([A-Za-z0-9_]+)"/g)) repoKeys.add(m[1]);
+for (const m of repoRules.matchAll(TERNARY_KEYS)) { repoKeys.add(m[1]); repoKeys.add(m[2]); }
+
+const n8nList = [...keys].sort().join(",");
+const repoList = [...repoKeys].sort().join(",");
+check("the repo table emits the same keys as n8n", n8nList === repoList,
+  n8nList === repoList ? `${repoKeys.size} keys` : `n8n ${n8nList} vs repo ${repoList}`);
+
+// Plain string scans rather than constructed regexes: building one from
+// a template literal silently drops its escapes.
+const valueOf = (txt, name) => {
+  const i = txt.indexOf(name + " =");
+  if (i < 0) return null;
+  const rest = txt.slice(i + name.length + 2, i + name.length + 24).trim();
+  const d = rest.match(/^[0-9.]+/);
+  return d ? d[0] : null;
+};
+for (const name of ["SPREAD_THRESHOLD", "SCAN_WINDOW_DAYS", "SOIL_STALE_DAYS"]) {
+  const a = valueOf(rules, name);
+  const b = valueOf(repoRules, name);
+  check(`${name} matches`, !!a && a === b, `n8n ${a} vs repo ${b}`);
+}
+
+// groupComparableQuotes decides whether two prices are comparable at
+// all. A divergence here is how a farmer gets told one mandi pays 87x
+// another when the real difference is that it is a different product.
+//
+// Compared by BEHAVIOUR, not by text. An earlier text comparison here
+// was matching the TypeScript return-type annotation instead of the
+// function body and reporting a divergence that did not exist. Running
+// both against the same fixtures is immune to formatting and is the
+// property that actually matters.
+const bodyFrom = (txt) => {
+  const listAt = txt.indexOf("const list", txt.indexOf("function groupComparableQuotes"));
+  if (listAt < 0) return null;
+  const from = txt.lastIndexOf("{", listAt);
+  let depth = 0;
+  for (let j = from; j < txt.length; j++) {
+    if (txt[j] === "{") depth++;
+    else if (txt[j] === "}") { depth--; if (depth === 0) return txt.slice(from, j + 1); }
+  }
+  return null;
+};
+const FIXTURES = [
+  [{ market: "A", modalPrice: 4500, variety: "Bellary", grade: "FAQ" },
+   { market: "B", modalPrice: 8700, variety: "Onion Green", grade: "FAQ" },
+   { market: "C", modalPrice: 4700, variety: "Bellary", grade: "FAQ" }],
+  [{ market: "A", modalPrice: 1000, variety: null, grade: null },
+   { market: "B", modalPrice: 1200, variety: null, grade: null }],
+  [{ market: "", modalPrice: 100 }, { market: "X", modalPrice: null }, null, "junk"],
+  [],
+  [{ market: "A", modalPrice: 500, variety: "L", grade: "A" },
+   { market: "A", modalPrice: 600, variety: "L", grade: "B" }]
+];
+
+let groupAgrees = true;
+try {
+  // The n8n copy is plain JS and can be evaluated here. The repo copy is
+  // TypeScript, so it is imported by a child process with type stripping
+  // rather than having its types regex-stripped — an earlier attempt to
+  // do that mangled a nested generic and reported a divergence that did
+  // not exist.
+  const n8nFn = new Function(
+    `function groupComparableQuotes(quotes) ${bodyFrom(rules)}; return groupComparableQuotes;`
+  )();
+  const child = spawnSync(
+    process.execPath,
+    ["--experimental-strip-types", "--input-type=module", "-e",
+     `import { groupComparableQuotes } from "./${REPO_RULES}";
+      const F = ${JSON.stringify(FIXTURES)};
+      console.log(JSON.stringify(F.map((f) => groupComparableQuotes(f))));`],
+    { encoding: "utf8" }
+  );
+  if (child.status !== 0) throw new Error((child.stderr || "").split(String.fromCharCode(10))[0] || "child failed");
+  const repoOut = JSON.parse(child.stdout.trim().split(String.fromCharCode(10)).pop());
+  FIXTURES.forEach((f, i) => {
+    if (JSON.stringify(n8nFn(f)) !== JSON.stringify(repoOut[i])) {
+      groupAgrees = false;
+      console.log(`    DIVERGENCE on ${JSON.stringify(f).slice(0, 70)}`);
+    }
+  });
+} catch (e) {
+  groupAgrees = false;
+  console.log(`    could not compare both copies: ${e.message.slice(0, 100)}`);
+}
+check("groupComparableQuotes behaves identically", groupAgrees, `${FIXTURES.length} fixtures`);
+
+console.log("\n=== the repo table names no chemical or treatment ===");
+const repoLower = repoRules.toLowerCase();
+for (const word of ENGLISH_BANNED) {
+  check(`repo table does not emit "${word}"`, !repoLower.includes(`"${word}`));
+}
+
+
 const CHEMICAL_NAMES = [
   "urea", "dap", "mancozeb", "carbendazim", "imidacloprid", "glyphosate",
   "chlorpyrifos", "sulphate", "sulfate", "nitrate", "potash"

@@ -7,7 +7,7 @@ import type {
   Scan,
   SoilRecord
 } from "@agri-one/shared-types";
-import { callAgentWebhook } from "@/lib/n8nClient";
+import { callOrchestratorApi } from "@/lib/orchestratorClient";
 import { normalizeBriefingResult } from "@/modules/dashboard/normalize";
 import { useAuth } from "@/auth/AuthProvider";
 import { useAppStore } from "@/stores/useAppStore";
@@ -78,6 +78,14 @@ function projectSoil(records: SoilRecord[] | undefined): { testedOn: string } | 
  *
  * Nothing is persisted: the briefing is recomputed per view, so there is
  * no table and no migration behind it.
+ *
+ * The briefing now comes from this project's own /api/orchestrator,
+ * which calls the already-migrated Weather, Market and Schemes logic as
+ * functions in one process rather than fanning out to n8n
+ * sub-workflows. The request payload, the DataResult contract and every
+ * state this hook can return are unchanged, so the card did not need
+ * redesigning — and the two projections below still decide what the
+ * Orchestrator is allowed to know.
  */
 export function useBriefing(
   farm: Farm | undefined,
@@ -107,7 +115,7 @@ export function useBriefing(
     staleTime: STALE_TIME_MS,
     queryFn: async (): Promise<DataResult<FarmBriefing>> =>
       normalizeBriefingResult(
-        await callAgentWebhook<unknown>("orchestrator", {
+        await callOrchestratorApi<unknown>({
           farmId: farm?.id ?? null,
           state: farm?.state ?? null,
           district: farm?.district ?? null,
