@@ -7,7 +7,7 @@ import type {
   Scan,
   SoilRecord
 } from "@agri-one/shared-types";
-import { callAgentWebhook } from "@/lib/n8nClient";
+import { callChatApi } from "@/lib/chatClient";
 import { normalizeChatResult } from "@/modules/voice-ai/normalize";
 import { useAppStore } from "@/stores/useAppStore";
 
@@ -113,7 +113,7 @@ export function useAskChat() {
         .filter((n) => n.trim().length > 0);
 
       return normalizeChatResult(
-        await callAgentWebhook<unknown>("chat", {
+        await callChatApi<unknown>({
           text: input.text,
           farmId: input.farm?.id ?? null,
           state: input.farm?.state ?? null,
