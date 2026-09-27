@@ -57,6 +57,27 @@ console.log("\n=== the checker's catalog copy matches Core's ===");
 const checkerCode = nodeOf("schemes-catalog-check.json", "List Catalog Entries").parameters.jsCode;
 check("catalog literal is byte-identical", checkerCode.startsWith(catalog));
 
+console.log("\n=== the repo catalog matches Core's ===");
+// The TypeScript file is compared by value rather than by text: it is a
+// different language from the n8n copies, so only the data can be
+// compared — and the data is what a farmer sees.
+const repoSrc = read("apps/web/src/modules/schemes/catalog.ts");
+const repoMatch = repoSrc.match(/export const CATALOG: CatalogScheme\[\] = (\[[\s\S]*\n\]);/);
+if (!repoMatch) throw new Error("catalog.ts: CATALOG literal not found");
+const repoJson = JSON.parse(repoMatch[1]);
+const repoVersion = (repoSrc.match(/export const CATALOG_VERSION = "([^"]+)"/) || [])[1];
+const core = new Function(`${catalog}; return { CATALOG, CATALOG_VERSION };`)();
+
+check("repo catalog version matches Core", repoVersion === core.CATALOG_VERSION,
+  `repo ${repoVersion} vs core ${core.CATALOG_VERSION}`);
+check("repo catalog has the same number of schemes",
+  repoJson.length === core.CATALOG.length,
+  `repo ${repoJson.length} vs core ${core.CATALOG.length}`);
+check("repo catalog is value-identical to Core's",
+  JSON.stringify(repoJson) === JSON.stringify(core.CATALOG),
+  "a difference means the served catalog and the rollback copy disagree");
+
+
 console.log("\n=== catalog content rules ===");
 // Evaluated rather than regex-scraped, so the rules apply to the real values.
 const CATALOG = new Function(`${catalog}; return { CATALOG, CATALOG_VERSION };`)().CATALOG;

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { DataResult, Farm, FarmCrop, SchemeMatchResult } from "@agri-one/shared-types";
-import { callAgentWebhook } from "@/lib/n8nClient";
+import { callSchemesApi } from "@/lib/schemesClient";
 import { normalizeSchemesResult } from "@/modules/schemes/normalize";
 import { useAuth } from "@/auth/AuthProvider";
 import { useAppStore } from "@/stores/useAppStore";
@@ -24,6 +24,13 @@ const STALE_TIME_MS = 60 * 60 * 1000;
  *
  * Nothing is persisted: this is a read-only discovery list, so there is
  * no Supabase table and no migration behind it.
+ *
+ * The catalog now comes from this project's own /api/schemes rather than
+ * n8n. Nothing external moved, because the n8n workflow made no data
+ * call either — there is no public API for Indian scheme eligibility, so
+ * the catalog was always curated by hand. The request payload, the
+ * DataResult contract and every state this hook can return are
+ * unchanged, so the page did not need redesigning.
  */
 export function useSchemes(farm: Farm | undefined, crops: FarmCrop[] | undefined) {
   const { status } = useAuth();
@@ -40,7 +47,7 @@ export function useSchemes(farm: Farm | undefined, crops: FarmCrop[] | undefined
     staleTime: STALE_TIME_MS,
     queryFn: async (): Promise<DataResult<SchemeMatchResult>> =>
       normalizeSchemesResult(
-        await callAgentWebhook<unknown>("schemes", {
+        await callSchemesApi<unknown>({
           state,
           district,
           areaAcres,
