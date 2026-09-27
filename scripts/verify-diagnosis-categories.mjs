@@ -98,6 +98,72 @@ check(
   [...reachable].every((c) => CATEGORIES.includes(c))
 );
 
+console.log("\n=== the repo classifier matches the n8n one ===");
+// Crop Diagnosis is now served from /api/diagnosis, which uses
+// apps/web/src/modules/scan-crop/roboflow.ts. The n8n workflow is kept
+// as a rollback copy, so the classifier exists in three places and they
+// must not drift. Patterns and thresholds are compared as text because a
+// single wrong escape is the whole bug this file exists to prevent.
+const REPO = "apps/web/src/modules/scan-crop/roboflow.ts";
+const repoSrc = fs.readFileSync(REPO, "utf8");
+
+/** The literal text of a regex declaration, delimiters and flags included. */
+const patternOf = (txt, name) => {
+  const i = txt.indexOf(`const ${name} =`);
+  if (i < 0) return null;
+  const start = txt.indexOf("/", txt.indexOf("=", i));
+  let j = start + 1;
+  let inClass = false;
+  for (; j < txt.length; j++) {
+    const ch = txt[j];
+    if (ch === "\\") { j++; continue; }
+    if (ch === "[") inClass = true;
+    else if (ch === "]") inClass = false;
+    else if (ch === "/" && !inClass) break;
+  }
+  return txt.slice(start, j + 1) + (txt.slice(j + 1).match(/^[a-z]*/) || [""])[0];
+};
+
+for (const name of ["HEALTHY_PATTERN", "PEST_PATTERN", "DISEASE_PATTERN"]) {
+  const a = patternOf(source, name);
+  const b = patternOf(repoSrc, name);
+  check(`${name} is byte-identical in the repo copy`, !!a && a === b, a === b ? "" : `n8n ${a} vs repo ${b}`);
+}
+
+const numberOf = (txt, name) => {
+  // Deliberately no constructed regex. Building one from a template
+  // literal is how "\s" quietly became "s" here on the first attempt —
+  // the very class of escaping bug this whole file exists to catch.
+  const i = txt.indexOf(name + " =");
+  if (i < 0) return null;
+  const rest = txt.slice(i + name.length + 2, i + name.length + 24).trim();
+  const digits = rest.match(/^[0-9.]+/);
+  return digits ? digits[0] : null;
+};
+for (const name of ["INCONCLUSIVE_THRESHOLD", "AMBIGUOUS_MARGIN", "HIGH_THRESHOLD"]) {
+  const a = numberOf(source, name);
+  const b = numberOf(repoSrc, name);
+  check(`${name} matches`, !!a && a === b, `n8n ${a} vs repo ${b}`);
+}
+
+// The repo classifier must classify every probe the same way.
+const repoStart = repoSrc.indexOf("const HEALTHY_PATTERN");
+const repoFnStart = repoSrc.indexOf("export function categoriseLabel", repoStart);
+const repoEnd = repoSrc.indexOf("\n}", repoFnStart) + 2;
+const repoCategorise = new Function(
+  `${repoSrc.slice(repoStart, repoEnd).replace("export function", "function").replace(/: unknown/g, "").replace(/: DiagnosisCategory/g, "")}; return categoriseLabel;`
+)();
+let repoAgrees = true;
+for (const [label] of PROBES) {
+  if (repoCategorise(label) !== categoriseLabel(label)) {
+    repoAgrees = false;
+    console.log(`    DIVERGENCE: ${JSON.stringify(label)} n8n=${categoriseLabel(label)} repo=${repoCategorise(label)}`);
+  }
+}
+check("the repo classifier agrees with the n8n one on every probe", repoAgrees);
+check("the repo classifier can emit pest", repoCategorise("Tomato Spider mites Two-spotted spider mite") === "pest");
+
+
 console.log("\n=== the node names no chemical or treatment ===");
 const BANNED = [
   "spray", "dosage", "pesticide", "fungicide", "insecticide", "herbicide",
@@ -107,6 +173,14 @@ const lower = source.toLowerCase();
 for (const word of BANNED) check(`does not mention "${word}"`, !lower.includes(word));
 check("careGuidance.culturalPractices is still empty", /culturalPractices:\s*\[\]/.test(source));
 check("careGuidance.monitoring is still empty", /monitoring:\s*\[\]/.test(source));
+
+console.log("\n=== the repo module names no chemical or treatment ===");
+const repoLower = repoSrc.toLowerCase();
+for (const word of BANNED) check(`repo does not mention "${word}"`, !repoLower.includes(word));
+check("repo careGuidance.culturalPractices is still empty",
+  /culturalPractices:\s*\[\]/.test(repoSrc));
+check("repo careGuidance.monitoring is still empty", /monitoring:\s*\[\]/.test(repoSrc));
+
 
 console.log("\n=== live n8n ===");
 await rpc("initialize", {

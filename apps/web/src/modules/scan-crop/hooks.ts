@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CropDiagnosisResult, DataResult, Scan } from "@agri-one/shared-types";
 import { supabase } from "@/lib/supabaseClient";
 import { uploadCropScanImage } from "@/lib/storage";
-import { callAgentWebhook } from "@/lib/n8nClient";
+import { callDiagnosisApi } from "@/lib/diagnosisClient";
 import { normalizeDiagnosisResult } from "@/modules/scan-crop/normalize";
 import { mapScanRow, type ScanRow } from "@/lib/mappers";
 import { useAuth } from "@/auth/AuthProvider";
@@ -55,11 +55,16 @@ export interface DiagnoseCropOutcome {
  * so the caller can render it like any other live-data failure; nothing
  * is persisted in that case.
  *
- * The webhook is the production "Crop Diagnosis API" workflow
- * (POST /webhook/crop-diagnosis), which takes imageUrl/cropName/locale and
- * delegates to "Crop Diagnosis - Core". imageUrl is a short-lived signed
- * Storage URL so n8n can fetch the bytes without holding a Storage
- * credential of its own.
+ * The diagnosis now comes from this project's own /api/diagnosis, which
+ * calls the same Roboflow model the n8n workflow called. imageUrl stays
+ * a short-lived signed Storage URL: Roboflow fetches the image itself,
+ * so neither the endpoint nor the provider ever holds a Storage
+ * credential. The upload and the scans insert stay here in the browser,
+ * where the farmer's own session and row-level security govern them.
+ *
+ * The request payload, the DataResult contract and every state this
+ * mutation can return are unchanged, so the page did not need
+ * redesigning.
  */
 export function useDiagnoseCrop() {
   const { user } = useAuth();
@@ -78,7 +83,7 @@ export function useDiagnoseCrop() {
       const { storagePath, signedUrl } = await uploadCropScanImage(user.id, farmId, file);
 
       const result = normalizeDiagnosisResult(
-        await callAgentWebhook<unknown>("crop-diagnosis", {
+        await callDiagnosisApi<unknown>({
           imageUrl: signedUrl,
           cropName,
           locale: language
